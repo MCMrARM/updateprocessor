@@ -33,6 +33,6 @@ public:
         checkTos();
     }
 
-    void downloadApk(std::string const& packageName);
+    void downloadApk(std::string const& packageName, int packageVersion, std::string const& downloadTo);
 
 };

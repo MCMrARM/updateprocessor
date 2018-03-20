@@ -1,6 +1,7 @@
 #include "play_device.h"
 
 #include <fstream>
+#include <zlib.h>
 
 playapi::device_info PlayDevice::loadDeviceInfo(std::string const& devicePath) {
     std::ifstream devInfoFile(devicePath);
@@ -63,6 +64,68 @@ void PlayDevice::checkTos() {
     }
 }
 
-void PlayDevice::downloadApk(std::string const& packageName) {
-    auto details = api.details(packageName).payload().detailsresponse().docv2();
+static void do_zlib_inflate(z_stream& zs, FILE* file, char* data, size_t len, int flags) {
+    char buf[4096];
+    int ret;
+    zs.avail_in = (uInt) len;
+    zs.next_in = (unsigned char*) data;
+    zs.avail_out = 0;
+    while (zs.avail_out == 0) {
+        zs.avail_out = 4096;
+        zs.next_out = (unsigned char*) buf;
+        ret = inflate(&zs, flags);
+        assert(ret != Z_STREAM_ERROR);
+        fwrite(buf, 1, sizeof(buf) - zs.avail_out, file);
+    }
+}
+
+void PlayDevice::downloadApk(std::string const& packageName, int packageVersion, std::string const& downloadTo) {
+    auto resp = api.delivery(packageName, packageVersion, std::string());
+    auto dd = resp.payload().deliveryresponse().appdeliverydata();
+    playapi::http_request req(dd.has_gzippeddownloadurl() ? dd.gzippeddownloadurl() : dd.downloadurl());
+    if (dd.has_gzippeddownloadurl())
+        req.set_encoding("gzip,deflate");
+    req.set_encoding("gzip,deflate");
+    req.add_header("Accept-Encoding", "identity");
+    auto cookie = dd.downloadauthcookie(0);
+    req.add_header("Cookie", cookie.name() + "=" + cookie.value());
+    req.set_user_agent("AndroidDownloadManager/" + device.build_version_string + " (Linux; U; Android " +
+                       device.build_version_string + "; " + device.build_model + " Build/" + device.build_id + ")");
+    req.set_follow_location(true);
+    req.set_timeout(0L);
+
+    FILE* file = fopen(downloadTo.c_str(), "w");
+    z_stream zs;
+    zs.zalloc = Z_NULL;
+    zs.zfree = Z_NULL;
+    zs.opaque = Z_NULL;
+    int ret = inflateInit2(&zs, 31);
+    assert(ret == Z_OK);
+
+    if (dd.has_gzippeddownloadurl()) {
+        req.set_custom_output_func([file, &zs](char* data, size_t size) {
+            do_zlib_inflate(zs, file, data, size, Z_NO_FLUSH);
+            return size;
+        });
+    } else {
+        req.set_custom_output_func([file, &zs](char* data, size_t size) {
+            fwrite(data, sizeof(char), size, file);
+            return size;
+        });
+    }
+
+    req.set_progress_callback([&req](curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+        if (dltotal > 0) {
+            printf("\rDownloaded %i%% [%li/%li MiB]", (int) (dlnow * 100 / dltotal), dlnow / 1024 / 1024,
+                   dltotal / 1024 / 1024);
+            std::cout.flush();
+        }
+    });
+    std::cout << std::endl << "Starting download...";
+    req.perform();
+
+    do_zlib_inflate(zs, file, Z_NULL, 0, Z_FINISH);
+    inflateEnd(&zs);
+
+    fclose(file);
 }
