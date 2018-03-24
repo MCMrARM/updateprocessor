@@ -37,7 +37,7 @@ Connection::Connection() {
         this->ws = ws;
     });
     hub.onDisconnection([this](uWS::WebSocket<uWS::CLIENT> *ws, int code, char *message, size_t length) {
-        printf("Disconnected!\n");
+        printf("Disconnected! %i %s\n", code, std::string(message, length).c_str());
         std::unique_lock<std::mutex> lock(dataMutex);
         this->ws = nullptr;
     });
