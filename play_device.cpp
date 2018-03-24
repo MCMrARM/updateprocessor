@@ -64,6 +64,30 @@ void PlayDevice::checkTos() {
     }
 }
 
+void PlayDevice::registerMCS() {
+    playapi::mcs_registration_api::instance_id_request req;
+    req.sender = "932144863878";
+    req.app_id = "cefO6sEQcZE";
+    req.app_pkg_name = "com.android.vending";
+    req.app_ver = "80921100";
+    req.app_ver_name = "9.2.11-all+[0]+[PR]+188192317";
+    req.app_cert = "38918a453d07199354f8b19af05ec6562ced5788";
+    req.client_id = "iid-11910000";
+    req.scope = "GCM";
+    std::string token = apiMcs.obtain_instance_id_token(req);
+    api.upload_device_config(token, false);
+}
+
+void PlayDevice::doContentSync() {
+    playapi::proto::finsky::contentsync::ContentSyncRequestProto req;
+    req.set_unknownalwaystrue(true);
+    auto app = req.add_installed();
+    app->set_id("com.mojang.minecraftpe");
+    app->set_version(871020009);
+    req.set_hassystemapps(false);
+    api.content_sync(req);
+}
+
 static void do_zlib_inflate(z_stream& zs, FILE* file, char* data, size_t len, int flags) {
     char buf[4096];
     int ret;
