@@ -4,7 +4,33 @@ using namespace playapi;
 using namespace nlohmann;
 using namespace discord::gateway;
 
+static const char* ZLIB_SUFFIX = "\x00\x00\xff\xff";
+
+std::string Connection::decompress(const char* data, size_t length) {
+    zs.avail_in = (uInt) length;
+    zs.next_in = (unsigned char*) data;
+    std::string out;
+    while(true) {
+        out.resize(out.size() + 4096);
+        zs.avail_out = 4096;
+        zs.next_out = (unsigned char*) (out.data() + out.size() - 4096);
+        int ret = inflate(&zs, Z_SYNC_FLUSH);
+        assert(ret != Z_STREAM_ERROR);
+        if (zs.avail_out != 0) {
+            out.resize(out.size() - zs.avail_out);
+            break;
+        }
+    }
+    return out;
+}
+
 Connection::Connection() {
+    zs.zalloc = Z_NULL;
+    zs.zfree = Z_NULL;
+    zs.opaque = Z_NULL;
+    int ret = inflateInit(&zs);
+    assert(ret == Z_OK);
+
     hub.onConnection([this](uWS::WebSocket<uWS::CLIENT>* ws, uWS::HttpRequest req) {
         printf("Connected!\n");
         std::unique_lock<std::mutex> lock(dataMutex);
@@ -16,8 +42,20 @@ Connection::Connection() {
         this->ws = nullptr;
     });
     hub.onMessage([this](uWS::WebSocket<uWS::CLIENT>* ws, char* message, size_t length, uWS::OpCode opCode) {
-        printf("Got message: %.*s\n", (int) length, message);
-        json j = json::parse(detail::input_adapter(message, length));
+        std::string outp;
+        json j;
+        if (isCompressed) {
+            compressedBuffer.append(message, length);
+            if (length > 4 && memcmp(&message[length - 4], ZLIB_SUFFIX, 4) == 0) {
+                outp = decompress(compressedBuffer.data(), compressedBuffer.length());
+                compressedBuffer.clear();
+                printf("Got compressed message: %s\n", outp.c_str());
+                j = json::parse(outp);
+            }
+        } else {
+            printf("Got message: %.*s\n", (int) length, message);
+            j = json::parse(detail::input_adapter(message, length));
+        }
         Payload payload;
         payload.op = j["op"];
         payload.data = j["d"];
@@ -27,6 +65,10 @@ Connection::Connection() {
             payload.eventName = j["t"];
         handlePayload(payload);
     });
+}
+
+Connection::~Connection() {
+    inflateEnd(&zs);
 }
 
 void Connection::connect(std::string const& url) {

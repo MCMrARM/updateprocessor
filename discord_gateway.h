@@ -71,10 +71,15 @@ class Connection {
 private:
     uWS::Hub hub;
     uWS::WebSocket<uWS::CLIENT>* ws = nullptr;
+    z_stream zs;
 
     std::mutex dataMutex;
     std::string token;
     StatusInfo status;
+    std::string compressedBuffer;
+    bool isCompressed = true;
+
+    std::string decompress(const char* data, size_t length);
 
     void handlePayload(Payload const& payload);
 
@@ -82,14 +87,15 @@ private:
 
     void sendPayload(Payload const& payload);
 
-
 public:
     Connection();
+
+    ~Connection();
 
     void connect(std::string const& url);
 
     void connect(Api& api) {
-        connect(api.getGatewayUrl() + "/?v=6&encoding=json&compress?=zlib-stream");
+        connect(api.getGatewayUrl() + "/?v=6&encoding=json&compress=zlib-stream");
     }
 
     void setToken(std::string const& token) {
