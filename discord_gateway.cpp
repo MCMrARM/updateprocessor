@@ -111,3 +111,17 @@ void Connection::handleHelloPayload(Payload const& payload) {
     lock.unlock();
     sendPayload(reply);
 }
+
+void Connection::setStatus(StatusInfo const& status) {
+    std::unique_lock<std::mutex> lock(dataMutex);
+    this->status = status;
+    if (ws != nullptr) {
+        Payload reply;
+        reply.op = Payload::Op::StatusUpdate;
+        reply.data = status.toJson();
+        lock.unlock();
+        sendPayload(reply);
+    } else {
+        lock.unlock();
+    }
+}

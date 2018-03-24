@@ -18,6 +18,14 @@ int main() {
     discord::gateway::Connection conn;
     conn.setToken(discordConf.get("token"));
     conn.connect(api);
+
+    discord::gateway::StatusInfo status;
+    status.since = std::chrono::system_clock::now();
+    status.status = "online";
+    status.activity.name = "over Mojang";
+    status.activity.type = (discord::gateway::Activity::Type) 3;
+    conn.setStatus(status);
+
     conn.loop();
 
     return 0;

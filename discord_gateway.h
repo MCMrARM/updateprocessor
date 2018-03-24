@@ -41,7 +41,8 @@ struct Activity {
         nlohmann::json ret;
         ret["name"] = name;
         ret["type"] = type;
-        ret["url"] = url;
+        if (!url.empty())
+            ret["url"] = url;
         return ret;
     }
 
@@ -53,7 +54,7 @@ struct StatusInfo {
     std::chrono::system_clock::time_point since;
     Activity activity;
     std::string status;
-    bool afk;
+    bool afk = false;
 
     nlohmann::json toJson() const {
         nlohmann::json ret;
