@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(updateprocesser)
+project(updateprocessor)
 
 set(CMAKE_CXX_STANDARD 11)
 
@@ -13,5 +13,5 @@ include_directories(${WEBSOCKET_LIB_PATH}/src)
 
 include_directories(json/include)
 
-add_executable(updateprocesser ${WEBSOCKET_LIB_SOURCES} main.cpp play_device.cpp play_device.h play_manager.cpp play_manager.h playapi/src/config.cpp)
-target_link_libraries(updateprocesser gplayapi)
+add_executable(updateprocessor ${WEBSOCKET_LIB_SOURCES} main.cpp play_device.cpp play_device.h play_manager.cpp play_manager.h playapi/src/config.cpp)
+target_link_libraries(updateprocessor gplayapi)

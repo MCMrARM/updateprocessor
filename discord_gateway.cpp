@@ -111,8 +111,8 @@ void Connection::sendIdentifyRequest() {
     reply.op = Payload::Op::Identify;
     reply.data["token"] = token;
     reply.data["properties"]["$os"] = "linux";
-    reply.data["properties"]["$browser"] = "updateprocesser";
-    reply.data["properties"]["device"] = "updateprocesser";
+    reply.data["properties"]["$browser"] = "updateprocessor";
+    reply.data["properties"]["device"] = "updateprocessor";
     reply.data["compress"] = true;
     reply.data["large_threshold"] = 50;
     reply.data["presence"] = status.toJson();
