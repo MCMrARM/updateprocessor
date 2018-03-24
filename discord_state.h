@@ -15,7 +15,7 @@ public:
 
     DiscordState(PlayManager& playManager);
 
-    void onMessage(discord::gateway::Message const& m);
+    void onMessage(discord::Message const& m);
 
     void loop();
 

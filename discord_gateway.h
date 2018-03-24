@@ -68,19 +68,6 @@ struct StatusInfo {
 };
 
 
-struct Message {
-
-    std::string content;
-
-    static Message fromJson(nlohmann::json j) {
-        Message ret;
-        ret.content = j["content"];
-        return ret;
-    }
-
-};
-
-
 class Connection {
 
 public:
