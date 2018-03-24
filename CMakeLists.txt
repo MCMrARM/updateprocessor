@@ -8,7 +8,7 @@ add_subdirectory(playapi)
 set_target_properties(gplaydl PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 set(WEBSOCKET_LIB_PATH uWebSockets)
-set(WEBSOCKET_LIB_SOURCES ${WEBSOCKET_LIB_PATH}/src/Extensions.cpp ${WEBSOCKET_LIB_PATH}/src/Group.cpp ${WEBSOCKET_LIB_PATH}/src/Networking.cpp ${WEBSOCKET_LIB_PATH}/src/Hub.cpp ${WEBSOCKET_LIB_PATH}/src/Node.cpp ${WEBSOCKET_LIB_PATH}/src/WebSocket.cpp ${WEBSOCKET_LIB_PATH}/src/HTTPSocket.cpp ${WEBSOCKET_LIB_PATH}/src/Socket.cpp ${WEBSOCKET_LIB_PATH}/src/Epoll.cpp discord.cpp discord.h discord_gateway.cpp discord_gateway.h)
+set(WEBSOCKET_LIB_SOURCES ${WEBSOCKET_LIB_PATH}/src/Extensions.cpp ${WEBSOCKET_LIB_PATH}/src/Group.cpp ${WEBSOCKET_LIB_PATH}/src/Networking.cpp ${WEBSOCKET_LIB_PATH}/src/Hub.cpp ${WEBSOCKET_LIB_PATH}/src/Node.cpp ${WEBSOCKET_LIB_PATH}/src/WebSocket.cpp ${WEBSOCKET_LIB_PATH}/src/HTTPSocket.cpp ${WEBSOCKET_LIB_PATH}/src/Socket.cpp ${WEBSOCKET_LIB_PATH}/src/Epoll.cpp discord.cpp discord.h discord_gateway.cpp discord_gateway.h discord_state.cpp discord_state.h)
 include_directories(${WEBSOCKET_LIB_PATH}/src)
 
 include_directories(json/include)

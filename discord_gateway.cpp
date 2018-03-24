@@ -92,14 +92,7 @@ void Connection::sendPayload(Payload const& payload) {
     ws->send(data.c_str(), data.length(), uWS::OpCode::TEXT);
 }
 
-void Connection::handlePayload(Payload const& payload) {
-    if (payload.op == Payload::Op::Dispatch)
-        handleDispatchPayload(payload);
-    else if (payload.op == Payload::Op::Hello)
-        handleHelloPayload(payload);
-}
-
-void Connection::handleHelloPayload(Payload const& payload) {
+void Connection::sendIdentifyRequest() {
     std::unique_lock<std::mutex> lock(dataMutex);
     Payload reply;
     reply.op = Payload::Op::Identify;
@@ -114,8 +107,45 @@ void Connection::handleHelloPayload(Payload const& payload) {
     sendPayload(reply);
 }
 
+void Connection::handlePayload(Payload const& payload) {
+    if (payload.op == Payload::Op::Dispatch)
+        handleDispatchPayload(payload);
+    else if (payload.op == Payload::Op::Hello)
+        handleHelloPayload(payload);
+    else if (payload.op == Payload::Op::InvalidSession)
+        handleInvalidSessionPayload(payload);
+}
+
+void Connection::handleHelloPayload(Payload const& payload) {
+    std::unique_lock<std::mutex> lock(dataMutex);
+    if (!sessionId.empty()) {
+        Payload reply;
+        reply.op = Payload::Op::Resume;
+        reply.data["token"] = token;
+        reply.data["session_id"] = sessionId;
+        reply.data["seq"] = lastSeqReceived;
+        lock.unlock();
+        sendPayload(reply);
+        return;
+    }
+    lock.unlock();
+    sendIdentifyRequest();
+}
+
+void Connection::handleInvalidSessionPayload(Payload const& payload) {
+    sendIdentifyRequest();
+}
+
 void Connection::handleDispatchPayload(Payload const& payload) {
-    if (payload.eventName == "MESSAGE_CREATE") {
+    {
+        std::unique_lock<std::mutex> lock(dataMutex);
+        lastSeqReceived = payload.sequenceNumber;
+    }
+
+    if (payload.eventName == "READY") {
+        std::unique_lock<std::mutex> lock(dataMutex);
+        sessionId = payload.data["session_id"];
+    } else if (payload.eventName == "MESSAGE_CREATE") {
         Message m = Message::fromJson(payload.data);
         std::unique_lock<std::mutex> lock(dataMutex);
         if (messageCallback)

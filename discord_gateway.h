@@ -18,7 +18,7 @@ struct Payload {
         Resume,
         Reconnect,
         RequestGuildMembers,
-        InvalidateSession,
+        InvalidSession,
         Hello,
         HeartbeatACK
     };
@@ -93,16 +93,22 @@ private:
 
     std::mutex dataMutex;
     std::string token;
+    std::string sessionId;
     StatusInfo status;
+    int lastSeqReceived = -1;
     std::string compressedBuffer;
     bool isCompressed = true;
     MessageCallback messageCallback;
 
     std::string decompress(const char* data, size_t length);
 
+    void sendIdentifyRequest();
+
     void handlePayload(Payload const& payload);
 
     void handleHelloPayload(Payload const& payload);
+
+    void handleInvalidSessionPayload(Payload const& payload);
 
     void handleDispatchPayload(Payload const& payload);
 
@@ -122,6 +128,22 @@ public:
     void setToken(std::string const& token) {
         std::unique_lock<std::mutex> lock(dataMutex);
         this->token = token;
+    }
+
+    void setSessionId(std::string const& session, int seq) {
+        std::unique_lock<std::mutex> lock(dataMutex);
+        sessionId = session;
+        lastSeqReceived = seq;
+    }
+
+    inline std::string const& getSession() {
+        std::unique_lock<std::mutex> lock(dataMutex);
+        return sessionId;
+    }
+
+    inline int getSessionSeq() {
+        std::unique_lock<std::mutex> lock(dataMutex);
+        return lastSeqReceived;
     }
 
     void setStatus(StatusInfo const& status);
