@@ -67,7 +67,24 @@ struct StatusInfo {
 
 };
 
+
+struct Message {
+
+    std::string content;
+
+    static Message fromJson(nlohmann::json j) {
+        Message ret;
+        ret.content = j["content"];
+        return ret;
+    }
+
+};
+
+
 class Connection {
+
+public:
+    using MessageCallback = std::function<void (Message const&)>;
 
 private:
     uWS::Hub hub;
@@ -79,12 +96,15 @@ private:
     StatusInfo status;
     std::string compressedBuffer;
     bool isCompressed = true;
+    MessageCallback messageCallback;
 
     std::string decompress(const char* data, size_t length);
 
     void handlePayload(Payload const& payload);
 
     void handleHelloPayload(Payload const& payload);
+
+    void handleDispatchPayload(Payload const& payload);
 
     void sendPayload(Payload const& payload);
 
@@ -105,6 +125,11 @@ public:
     }
 
     void setStatus(StatusInfo const& status);
+
+    void setMessageCallback(MessageCallback const& callback) {
+        std::unique_lock<std::mutex> lock(dataMutex);
+        messageCallback = callback;
+    }
 
     void loop() {
         hub.run();

@@ -93,7 +93,9 @@ void Connection::sendPayload(Payload const& payload) {
 }
 
 void Connection::handlePayload(Payload const& payload) {
-    if (payload.op == Payload::Op::Hello)
+    if (payload.op == Payload::Op::Dispatch)
+        handleDispatchPayload(payload);
+    else if (payload.op == Payload::Op::Hello)
         handleHelloPayload(payload);
 }
 
@@ -110,6 +112,15 @@ void Connection::handleHelloPayload(Payload const& payload) {
     reply.data["presence"] = status.toJson();
     lock.unlock();
     sendPayload(reply);
+}
+
+void Connection::handleDispatchPayload(Payload const& payload) {
+    if (payload.eventName == "MESSAGE_CREATE") {
+        Message m = Message::fromJson(payload.data);
+        std::unique_lock<std::mutex> lock(dataMutex);
+        if (messageCallback)
+            messageCallback(m);
+    }
 }
 
 void Connection::setStatus(StatusInfo const& status) {
