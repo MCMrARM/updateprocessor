@@ -92,6 +92,19 @@ void Connection::sendPayload(Payload const& payload) {
     ws->send(data.c_str(), data.length(), uWS::OpCode::TEXT);
 }
 
+void Connection::sendHeartbeat() {
+    std::unique_lock<std::mutex> lock(dataMutex);
+    hasReceivedACK = false;
+    Payload ping;
+    ping.op = Payload::Op::Heartbeat;
+    if (lastSeqReceived != -1)
+        ping.data = lastSeqReceived;
+    else
+        ping.data = nullptr;
+    lock.unlock();
+    sendPayload(ping);
+}
+
 void Connection::sendIdentifyRequest() {
     std::unique_lock<std::mutex> lock(dataMutex);
     Payload reply;
@@ -110,13 +123,19 @@ void Connection::sendIdentifyRequest() {
 void Connection::handlePayload(Payload const& payload) {
     if (payload.op == Payload::Op::Dispatch)
         handleDispatchPayload(payload);
+    else if (payload.op == Payload::Op::Heartbeat)
+        handleHeartbeat(payload);
     else if (payload.op == Payload::Op::Hello)
         handleHelloPayload(payload);
+    else if (payload.op == Payload::Op::HeartbeatACK)
+        handleHeartbeatACK(payload);
     else if (payload.op == Payload::Op::InvalidSession)
         handleInvalidSessionPayload(payload);
 }
 
 void Connection::handleHelloPayload(Payload const& payload) {
+    startHeartbeat(payload.data["heartbeat_interval"]);
+
     std::unique_lock<std::mutex> lock(dataMutex);
     if (!sessionId.empty()) {
         Payload reply;
@@ -151,6 +170,36 @@ void Connection::handleDispatchPayload(Payload const& payload) {
         if (messageCallback)
             messageCallback(m);
     }
+}
+
+void Connection::handleHeartbeat(Payload const& payload) {
+    sendHeartbeat();
+}
+
+void Connection::handleHeartbeatACK(Payload const& payload) {
+    std::unique_lock<std::mutex> lock(dataMutex);
+    hasReceivedACK = true;
+}
+
+void Connection::checkReceivedHeartbeatACK() {
+    std::unique_lock<std::mutex> lock(dataMutex);
+    if (!hasReceivedACK) {
+        lock.unlock();
+        ws->close(1001);
+    }
+}
+
+void Connection::startHeartbeat(int interval) {
+    std::unique_lock<std::mutex> lock(dataMutex);
+    if (pingTimer != nullptr)
+        return;
+    pingTimer = new uS::Timer(hub.getLoop());
+    pingTimer->setData(this);
+    pingTimer->start([](uS::Timer* timer) {
+        Connection* conn = ((Connection*) timer->getData());
+        conn->checkReceivedHeartbeatACK();
+        conn->sendHeartbeat();
+    }, interval, interval);
 }
 
 void Connection::setStatus(StatusInfo const& status) {

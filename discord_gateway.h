@@ -76,6 +76,7 @@ public:
 private:
     uWS::Hub hub;
     uWS::WebSocket<uWS::CLIENT>* ws = nullptr;
+    uS::Timer* pingTimer = nullptr;
     z_stream zs;
 
     std::mutex dataMutex;
@@ -85,9 +86,14 @@ private:
     int lastSeqReceived = -1;
     std::string compressedBuffer;
     bool isCompressed = true;
+    bool hasReceivedACK = true;
     MessageCallback messageCallback;
 
     std::string decompress(const char* data, size_t length);
+
+    void sendPayload(Payload const& payload);
+
+    void sendHeartbeat();
 
     void sendIdentifyRequest();
 
@@ -99,7 +105,14 @@ private:
 
     void handleDispatchPayload(Payload const& payload);
 
-    void sendPayload(Payload const& payload);
+    void handleHeartbeat(Payload const& payload);
+
+    void handleHeartbeatACK(Payload const& payload);
+
+    void startHeartbeat(int interval);
+
+
+    void checkReceivedHeartbeatACK();
 
 public:
     Connection();
