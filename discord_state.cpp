@@ -28,11 +28,15 @@ void DiscordState::onMessage(discord::Message const& m) {
             command = m.content.substr(0, it);
         if (command == "!get_version") {
             auto detailsARM = playManager.getDeviceARM().getApi().details("com.mojang.minecraftpe");
-            auto details = detailsARM.payload().detailsresponse().docv2().details().appdetails();
-            printf("version = %i\n", detailsARM.payload().detailsresponse().docv2().details().appdetails().versioncode());
+            auto appDetailsARM = detailsARM.payload().detailsresponse().docv2().details().appdetails();
+
+            auto detailsX86 = playManager.getDeviceX86().getApi().details("com.mojang.minecraftpe");
+            auto appDetailsX86 = detailsX86.payload().detailsresponse().docv2().details().appdetails();
+
             std::stringstream ss;
-            ss << "Current Minecraft version: " << details.versionstring()
-               << " (ARM version code: " << details.versioncode() << ")";
+            ss << "Current Minecraft version: " << appDetailsARM.versionstring()
+               << " (ARM version code: " << appDetailsARM.versioncode() << ", "
+               << "X86 version code: " << appDetailsX86.versioncode() << ")";
             api.createMessage(m.channel, ss.str());
         }
     }
