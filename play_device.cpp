@@ -27,12 +27,14 @@ playapi::login_api PlayDevice::loadLoginInfo(playapi::device_info& device, devic
     playapi::login_api login(device);
     login.set_token(appConfig.user_email, appConfig.user_token);
     login.set_checkin_data(devState.checkin_data);
-    login.verify();
+    login.load_auth_cookies(devState.config.get_array("login_auth_cookies"));
+    // login.verify();
 
     if (devState.checkin_data.android_id == 0) {
         playapi::checkin_api checkin(device);
         checkin.add_auth(login);
         devState.checkin_data = checkin.perform_checkin();
+        storeAuthCookies(devState, login);
         devState.save();
     }
 
@@ -58,10 +60,16 @@ void PlayDevice::checkTos() {
                 auto tos = api.accept_tos(toc.payload().tocresponse().tostoken(), false);
                 assert(tos.payload().has_accepttosresponse());
                 deviceConfig.set_api_data(login.get_email(), api);
-                deviceConfig.save();
+                // deviceConfig.save();
             }
         }
     }
+    storeAuthCookies(deviceConfig, login);
+    deviceConfig.save();
+}
+
+void PlayDevice::storeAuthCookies(device_config& device, playapi::login_api& login) {
+    device.config.set_array("login_auth_cookies", login.store_auth_cookies());
 }
 
 void PlayDevice::registerMCS() {

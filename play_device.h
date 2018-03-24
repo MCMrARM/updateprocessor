@@ -19,11 +19,15 @@ private:
     playapi::mcs_registration_api apiMcs;
 
     static playapi::device_info loadDeviceInfo(std::string const& devicePath);
+
     static device_config loadDeviceStateInfo(playapi::device_info& device, std::string const& devicePath);
+
     static playapi::login_api loadLoginInfo(playapi::device_info& device, device_config& deviceConfig,
                                             app_config const& appConfig);
 
     void checkTos();
+
+    static void storeAuthCookies(device_config& device, playapi::login_api& login);
 
 public:
     PlayDevice(app_config const& appConfig, std::string const& devicePath) :
@@ -37,7 +41,9 @@ public:
     }
 
     inline playapi::api& getApi() { return api; }
+
     inline playapi::login_api& getLoginApi() { return login; }
+
     inline playapi::mcs_registration_api& getMcsApi() { return apiMcs; }
 
     inline playapi::checkin_result const& getCheckinData() { return deviceConfig.checkin_data; }
