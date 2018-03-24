@@ -1,3 +1,9 @@
 [submodule "playapi"]
 	path = playapi
 	url = https://github.com/MCMrARM/Google-Play-API
+[submodule "uWebSockets"]
+	path = uWebSockets
+	url = https://github.com/uNetworking/uWebSockets.git
+[submodule "json"]
+	path = json
+	url = https://github.com/nlohmann/json.git
