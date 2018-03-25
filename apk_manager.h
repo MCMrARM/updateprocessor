@@ -5,6 +5,7 @@
 #include <mutex>
 #include <condition_variable>
 #include "play_manager.h"
+#include "apk_uploader.h"
 
 struct ApkVersionInfo {
     int versionCode = -1;
@@ -28,6 +29,7 @@ private:
     bool stopped = false;
 
     PlayManager& playManager;
+    ApkUploader uploader;
     NewVersionCallback newVersionCallback;
     playapi::config versionCheckConfig;
     ApkVersionInfo armVersionInfo, x86VersionInfo;
@@ -40,6 +42,8 @@ private:
 
     void updateLatestVersions();
 
+    void downloadAndProcessApk(PlayDevice& device, int version, ApkVersionInfo& info);
+
 public:
 
     ApkManager(PlayManager& playManager);
@@ -47,6 +51,7 @@ public:
     ~ApkManager() {
         thread_mutex.lock();
         stopped = true;
+        stop_cv.notify_all();
         thread_mutex.unlock();
         thread.join();
     }
@@ -74,11 +79,5 @@ public:
         std::lock_guard<std::mutex> lk(data_mutex);
         return lastVersionUpdate;
     }
-
-    void downloadAndProcessApk(PlayDevice& device, int version);
-
-    void downloadAndProcessApks();
-
-    void sendApkForAnalytics(std::string const& path);
 
 };

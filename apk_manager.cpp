@@ -7,7 +7,7 @@ ApkManager::ApkManager(PlayManager& playManager) : playManager(playManager) {
     versionCheckConfig.load(ifs);
     armVersionString = versionCheckConfig.get("arm_version_string");
     armVersionInfo.loadFromConfig(versionCheckConfig, "version.arm.");
-    armVersionInfo.loadFromConfig(versionCheckConfig, "version.x86.");
+    x86VersionInfo.loadFromConfig(versionCheckConfig, "version.x86.");
 }
 
 void ApkManager::saveVersionInfo() {
@@ -57,6 +57,8 @@ void ApkManager::updateLatestVersions() {
 
     bool hasNewARMVersion = (armVersionInfo.versionCode != appDetailsARM.versioncode());
     bool hasNewX86Version = (x86VersionInfo.versionCode != appDetailsX86.versioncode());
+    bool downloadARMApk = (armVersionInfo.lastDownloadedVersionCode != appDetailsARM.versioncode());
+    bool downloadX86Apk = (x86VersionInfo.lastDownloadedVersionCode != appDetailsX86.versioncode());
 
     armVersionInfo.versionCode = appDetailsARM.versioncode();
     x86VersionInfo.versionCode = appDetailsX86.versioncode();
@@ -70,46 +72,34 @@ void ApkManager::updateLatestVersions() {
     lastVersionUpdate = std::chrono::system_clock::now();
 
     if (hasNewARMVersion || hasNewX86Version) {
-        // saveVersionInfo();
+        saveVersionInfo();
     }
 
     lk.unlock();
+    {
+        std::unique_lock<std::mutex> lk_cb(cb_mutex);
+        if (hasNewARMVersion && newVersionCallback)
+            newVersionCallback(appDetailsARM.versioncode(), appDetailsARM.recentchangeshtml(), "arm");
+        if (hasNewX86Version && newVersionCallback)
+            newVersionCallback(appDetailsX86.versioncode(), appDetailsX86.recentchangeshtml(), "x86");
+    }
 
-    std::unique_lock<std::mutex> lk_cb(cb_mutex);
+    if (downloadARMApk) {
+        downloadAndProcessApk(playManager.getDeviceARM(), appDetailsARM.versioncode(), armVersionInfo);
+    }
+    if (downloadX86Apk)
+        downloadAndProcessApk(playManager.getDeviceX86(), appDetailsX86.versioncode(), x86VersionInfo);
 
-    if (hasNewARMVersion && newVersionCallback)
-        newVersionCallback(appDetailsARM.versioncode(), appDetailsARM.recentchangeshtml(), "arm");
-    if (hasNewX86Version && newVersionCallback)
-        newVersionCallback(appDetailsX86.versioncode(), appDetailsX86.recentchangeshtml(), "x86");
 }
 
-void ApkManager::downloadAndProcessApks() {
-    updateLatestVersions();
-    downloadAndProcessApk(playManager.getDeviceARM(), getARMVersionInfo().versionCode);
-    // downloadAndProcessApk(playManager.getDeviceX86(), x86VersionInfo.versionCode);
-}
-
-void ApkManager::downloadAndProcessApk(PlayDevice& device, int version) {
+void ApkManager::downloadAndProcessApk(PlayDevice& device, int version, ApkVersionInfo& info) {
     std::string outp = "priv/apks/com.mojang.minecraftpe " + std::to_string(version) + ".apk";
     FileUtils::mkdirs(FileUtils::getParent(outp));
     device.downloadApk("com.mojang.minecraftpe", version, outp);
-    sendApkForAnalytics(outp);
-}
-
-void ApkManager::sendApkForAnalytics(std::string const& path) {
-    CURL* curl = curl_easy_init();
-    if (!curl)
-        throw std::runtime_error("Failed to init curl");
-    curl_mime* form = curl_mime_init(curl);
-    curl_mimepart* field;
-    field = curl_mime_addpart(form);
-    curl_mime_name(field, "file");
-    curl_mime_filedata(field, path.c_str());
-    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:7543/ida/exec");
-    curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
-    auto res = curl_easy_perform(curl);
-    if (res != CURLE_OK)
-        throw std::runtime_error(std::string("Upload request failed: ") + curl_easy_strerror(res));
-    curl_easy_cleanup(curl);
-    curl_mime_free(form);
+    uploader.addFile(outp);
+    std::unique_lock<std::mutex> lk(data_mutex);
+    if (version > info.lastDownloadedVersionCode) {
+        info.lastDownloadedVersionCode = version;
+        saveVersionInfo();
+    }
 }

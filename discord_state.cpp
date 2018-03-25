@@ -46,7 +46,7 @@ void DiscordState::onMessage(discord::Message const& m) {
                << "checked on " << tt << ")";
             api.createMessage(m.channel, ss.str());
         } else if (command == "!force_download") {
-            apkManager.downloadAndProcessApks();
+            // apkManager.downloadAndProcessApks();
         }
     }
 }
