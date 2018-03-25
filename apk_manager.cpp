@@ -52,7 +52,7 @@ void ApkManager::updateLatestVersions() {
     auto appDetailsARM = detailsARM.payload().bulkdetailsresponse().entry(0).doc().details().appdetails();
 
     r.installed_version_code = x86VersionInfo.lastDownloadedVersionCode;
-    auto detailsX86 = playManager.getDeviceARM().getApi().bulk_details({r});
+    auto detailsX86 = playManager.getDeviceX86().getApi().bulk_details({r});
     auto appDetailsX86 = detailsX86.payload().bulkdetailsresponse().entry(0).doc().details().appdetails();
 
     bool hasNewARMVersion = (armVersionInfo.versionCode != appDetailsARM.versioncode());
