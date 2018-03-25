@@ -8,8 +8,6 @@ ApkManager::ApkManager(PlayManager& playManager) : playManager(playManager) {
     armVersionString = versionCheckConfig.get("arm_version_string");
     armVersionInfo.loadFromConfig(versionCheckConfig, "version.arm.");
     armVersionInfo.loadFromConfig(versionCheckConfig, "version.x86.");
-
-    thread = std::thread(std::bind(&ApkManager::runVersionCheckThread, this));
 }
 
 void ApkManager::saveVersionInfo() {
@@ -28,6 +26,10 @@ void ApkVersionInfo::loadFromConfig(playapi::config const& config, std::string c
 void ApkVersionInfo::saveToConfig(playapi::config& config, std::string const& prefix) {
     config.set_int(prefix + "version_code", versionCode);
     config.set_int(prefix + "last_downloaded_version_code", lastDownloadedVersionCode);
+}
+
+void ApkManager::startChecking() {
+    thread = std::thread(std::bind(&ApkManager::runVersionCheckThread, this));
 }
 
 void ApkManager::runVersionCheckThread() {
@@ -68,9 +70,17 @@ void ApkManager::updateLatestVersions() {
     lastVersionUpdate = std::chrono::system_clock::now();
 
     if (hasNewARMVersion || hasNewX86Version) {
-
-        saveVersionInfo();
+        // saveVersionInfo();
     }
+
+    lk.unlock();
+
+    std::unique_lock<std::mutex> lk_cb(cb_mutex);
+
+    if (hasNewARMVersion && newVersionCallback)
+        newVersionCallback(appDetailsARM.versioncode(), appDetailsARM.recentchangeshtml(), "arm");
+    if (hasNewX86Version && newVersionCallback)
+        newVersionCallback(appDetailsX86.versioncode(), appDetailsX86.recentchangeshtml(), "x86");
 }
 
 void ApkManager::downloadAndProcessApks() {

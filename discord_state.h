@@ -10,6 +10,7 @@ private:
     playapi::config discordConf;
     PlayManager& playManager;
     ApkManager& apkManager;
+    std::vector<std::string> broadcastChannels;
 
 public:
     discord::Api api;
@@ -18,6 +19,8 @@ public:
     DiscordState(PlayManager& playManager, ApkManager& apkManager);
 
     void onMessage(discord::Message const& m);
+
+    void onNewVersion(int version, std::string const& changelog, std::string const& variant);
 
     void loop();
 

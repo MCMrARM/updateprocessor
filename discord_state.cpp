@@ -7,6 +7,8 @@ DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : p
     std::ifstream ifs("priv/discord.conf");
     discordConf.load(ifs);
 
+    broadcastChannels = discordConf.get_array("broadcast_channels", {});
+
     api.setBothAuth(discordConf.get("token"));
     conn.setToken(discordConf.get("token"));
     conn.setSessionId(discordConf.get("session_id"), discordConf.get_int("session_seq"));
@@ -19,6 +21,9 @@ DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : p
     status.activity.name = "over Mojang";
     status.activity.type = (discord::gateway::Activity::Type) 3;
     conn.setStatus(status);
+
+    using namespace std::placeholders;
+    apkManager.setNewVersionCallback(std::bind(&DiscordState::onNewVersion, this, _1, _2, _3));
 }
 
 void DiscordState::onMessage(discord::Message const& m) {
@@ -55,4 +60,16 @@ void DiscordState::storeSessionInfo() {
     discordConf.set_int("session_seq", conn.getSessionSeq());
     std::ofstream ofs("priv/discord.conf");
     discordConf.save(ofs);
+}
+
+void DiscordState::onNewVersion(int version, std::string const& changelog, std::string const& variant) {
+    std::stringstream ss;
+    ss << "**New version available!** " << apkManager.getVersionString() << " / " << std::to_string(version) <<
+          " " << variant;
+    if (variant == "arm")
+        ss << "\n" << changelog;
+    std::string notif = ss.str();
+    for (std::string const& chan : broadcastChannels) {
+        api.createMessage(chan, notif);
+    }
 }

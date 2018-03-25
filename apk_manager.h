@@ -16,14 +16,19 @@ struct ApkVersionInfo {
 
 class ApkManager {
 
+public:
+    using NewVersionCallback = std::function<void (int version, std::string const& changelog,
+                                                   std::string const& variant)>;
+
 private:
 
     std::thread thread;
-    std::mutex thread_mutex, data_mutex;
+    std::mutex thread_mutex, data_mutex, cb_mutex;
     std::condition_variable stop_cv;
     bool stopped = false;
 
     PlayManager& playManager;
+    NewVersionCallback newVersionCallback;
     playapi::config versionCheckConfig;
     ApkVersionInfo armVersionInfo, x86VersionInfo;
     std::string armVersionString;
@@ -44,6 +49,13 @@ public:
         stopped = true;
         thread_mutex.unlock();
         thread.join();
+    }
+
+    void startChecking();
+
+    void setNewVersionCallback(NewVersionCallback callback) {
+        std::lock_guard<std::mutex> lk(cb_mutex);
+        newVersionCallback = callback;
     }
 
     std::string getVersionString() {
