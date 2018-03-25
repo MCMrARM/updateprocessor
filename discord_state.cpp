@@ -2,7 +2,8 @@
 
 #include <fstream>
 
-DiscordState::DiscordState(PlayManager& playManager) : playManager(playManager) {
+DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : playManager(playManager),
+                                                                               apkManager(apkManager) {
     std::ifstream ifs("priv/discord.conf");
     discordConf.load(ifs);
 
@@ -27,17 +28,14 @@ void DiscordState::onMessage(discord::Message const& m) {
         if (it == std::string::npos)
             command = m.content.substr(0, it);
         if (command == "!get_version") {
-            auto detailsARM = playManager.getDeviceARM().getApi().details("com.mojang.minecraftpe");
-            auto appDetailsARM = detailsARM.payload().detailsresponse().docv2().details().appdetails();
-
-            auto detailsX86 = playManager.getDeviceX86().getApi().details("com.mojang.minecraftpe");
-            auto appDetailsX86 = detailsX86.payload().detailsresponse().docv2().details().appdetails();
-
+            apkManager.maybeUpdateLatestVersions();
             std::stringstream ss;
-            ss << "Current Minecraft version: " << appDetailsARM.versionstring()
-               << " (ARM version code: " << appDetailsARM.versioncode() << ", "
-               << "X86 version code: " << appDetailsX86.versioncode() << ")";
+            ss << "Current Minecraft version: " << apkManager.getARMVersionInfo().versionString
+               << " (ARM version code: " << apkManager.getARMVersionInfo().versionCode << ", "
+               << "X86 version code: " << apkManager.getX86VersionInfo().versionCode << ")";
             api.createMessage(m.channel, ss.str());
+        } else if (command == "!force_download") {
+            apkManager.downloadAndProcessApks();
         }
     }
 }
