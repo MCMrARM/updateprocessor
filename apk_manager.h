@@ -3,18 +3,17 @@
 #include "play_manager.h"
 
 struct ApkVersionInfo {
-    int versionCode;
-    std::string versionString;
+    int versionCode = -1;
+    int lastDownloadedVersionCode = -1;
 };
 
 class ApkManager {
 
 private:
 
-    static std::string getOutputFilePath(int version, std::string const& versionString, std::string const& archStr);
-
     PlayManager& playManager;
     ApkVersionInfo armVersionInfo, x86VersionInfo;
+    std::string armVersionString;
 
 public:
 
@@ -23,11 +22,11 @@ public:
     void updateLatestVersions();
     void maybeUpdateLatestVersions() { updateLatestVersions(); }
 
+    std::string const& getVersionString() const { return armVersionString; }
     ApkVersionInfo const& getARMVersionInfo() const { return armVersionInfo; }
     ApkVersionInfo const& getX86VersionInfo() const { return x86VersionInfo; }
 
-    void downloadAndProcessApk(PlayDevice& device, int version, std::string const& versionString,
-                               std::string const& archStr);
+    void downloadAndProcessApk(PlayDevice& device, int version);
 
     void downloadAndProcessApks();
 

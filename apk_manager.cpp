@@ -2,48 +2,38 @@
 #include "file_utils.h"
 
 void ApkManager::updateLatestVersions() {
-    auto detailsARM = playManager.getDeviceARM().getApi().details("com.mojang.minecraftpe");
-    auto appDetailsARM = detailsARM.payload().detailsresponse().docv2().details().appdetails();
+    playapi::api::bulk_details_request r;
+    r.name = "com.mojang.minecraftpe";
 
-    auto detailsX86 = playManager.getDeviceX86().getApi().details("com.mojang.minecraftpe");
-    auto appDetailsX86 = detailsX86.payload().detailsresponse().docv2().details().appdetails();
+    r.installed_version_code = armVersionInfo.lastDownloadedVersionCode;
+    auto detailsARM = playManager.getDeviceARM().getApi().bulk_details({r});
+    auto appDetailsARM = detailsARM.payload().bulkdetailsresponse().entry(0).doc().details().appdetails();
+
+    r.installed_version_code = x86VersionInfo.lastDownloadedVersionCode;
+    auto detailsX86 = playManager.getDeviceARM().getApi().bulk_details({r});
+    auto appDetailsX86 = detailsX86.payload().bulkdetailsresponse().entry(0).doc().details().appdetails();
+
+    if (armVersionInfo.versionCode != appDetailsARM.versioncode()) {
+        auto fullDetailsARM = playManager.getDeviceARM().getApi().details(r.name);
+        auto fullAppDetailsARM = fullDetailsARM.payload().detailsresponse().docv2().details().appdetails();
+        armVersionString = fullAppDetailsARM.versionstring();
+    }
 
     armVersionInfo.versionCode = appDetailsARM.versioncode();
-    armVersionInfo.versionString = appDetailsARM.versionstring();
-
     x86VersionInfo.versionCode = appDetailsX86.versioncode();
-    x86VersionInfo.versionString = appDetailsX86.versionstring();
 }
 
 void ApkManager::downloadAndProcessApks() {
     maybeUpdateLatestVersions();
-    downloadAndProcessApk(playManager.getDeviceARM(), armVersionInfo.versionCode, armVersionInfo.versionString, "arm");
-    // downloadAndProcessApk(playManager.getDeviceX86(), x86VersionInfo.versionCode, x86VersionInfo.versionString, "x86");
+    downloadAndProcessApk(playManager.getDeviceARM(), armVersionInfo.versionCode);
+    // downloadAndProcessApk(playManager.getDeviceX86(), x86VersionInfo.versionCode);
 }
 
-void ApkManager::downloadAndProcessApk(PlayDevice& device, int version, std::string const& versionString,
-                                       std::string const& archStr) {
-    std::string outp = getOutputFilePath(version, versionString, archStr);
+void ApkManager::downloadAndProcessApk(PlayDevice& device, int version) {
+    std::string outp = "priv/apks/com.mojang.minecraftpe " + std::to_string(version) + ".apk";
     FileUtils::mkdirs(FileUtils::getParent(outp));
     device.downloadApk("com.mojang.minecraftpe", version, outp);
     sendApkForAnalytics(outp);
-}
-
-std::string ApkManager::getOutputFilePath(int version, std::string const& versionString, std::string const& archStr) {
-    std::stringstream outputDir;
-    outputDir << "priv/apks/";
-    auto iof = versionString.find('.');
-    iof = versionString.find('.', iof + 1);
-    if (iof == std::string::npos)
-        throw std::runtime_error("Invalid version string");
-    outputDir << versionString.substr(0, iof) << ".x/";
-    auto iof2 = versionString.find('.', iof + 1);
-    if (iof2 == std::string::npos)
-        throw std::runtime_error("Invalid version string");
-    outputDir << versionString.substr(0, iof2) << ".x/";
-
-    outputDir << "Minecraft " << versionString << " " << archStr << " " << version << ".apk";
-    return outputDir.str();
 }
 
 void ApkManager::sendApkForAnalytics(std::string const& path) {

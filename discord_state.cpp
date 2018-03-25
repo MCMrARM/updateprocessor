@@ -30,7 +30,7 @@ void DiscordState::onMessage(discord::Message const& m) {
         if (command == "!get_version") {
             apkManager.maybeUpdateLatestVersions();
             std::stringstream ss;
-            ss << "Current Minecraft version: " << apkManager.getARMVersionInfo().versionString
+            ss << "Current Minecraft version: " << apkManager.getVersionString()
                << " (ARM version code: " << apkManager.getARMVersionInfo().versionCode << ", "
                << "X86 version code: " << apkManager.getX86VersionInfo().versionCode << ")";
             api.createMessage(m.channel, ss.str());
