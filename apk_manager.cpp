@@ -1,7 +1,22 @@
 #include "apk_manager.h"
 #include "file_utils.h"
 
+ApkManager::ApkManager(PlayManager& playManager) : playManager(playManager) {
+    thread = std::thread(std::bind(&ApkManager::runVersionCheckThread, this));
+}
+
+void ApkManager::runVersionCheckThread() {
+    std::unique_lock<std::mutex> lk(thread_mutex);
+    while (!stopped) {
+        updateLatestVersions();
+
+        auto until = std::chrono::system_clock::now() + std::chrono::minutes(10);
+        stop_cv.wait_until(lk, until, [this] { return stopped; });
+    }
+}
+
 void ApkManager::updateLatestVersions() {
+    std::unique_lock<std::mutex> lk(data_mutex);
     playapi::api::bulk_details_request r;
     r.name = "com.mojang.minecraftpe";
 
@@ -13,19 +28,24 @@ void ApkManager::updateLatestVersions() {
     auto detailsX86 = playManager.getDeviceARM().getApi().bulk_details({r});
     auto appDetailsX86 = detailsX86.payload().bulkdetailsresponse().entry(0).doc().details().appdetails();
 
-    if (armVersionInfo.versionCode != appDetailsARM.versioncode()) {
+    bool hasNewARMVersion = (armVersionInfo.versionCode != appDetailsARM.versioncode());
+    bool hasNewX86Version = (x86VersionInfo.versionCode != appDetailsX86.versioncode());
+
+    armVersionInfo.versionCode = appDetailsARM.versioncode();
+    x86VersionInfo.versionCode = appDetailsX86.versioncode();
+
+    if (hasNewARMVersion) {
         auto fullDetailsARM = playManager.getDeviceARM().getApi().details(r.name);
         auto fullAppDetailsARM = fullDetailsARM.payload().detailsresponse().docv2().details().appdetails();
         armVersionString = fullAppDetailsARM.versionstring();
     }
 
-    armVersionInfo.versionCode = appDetailsARM.versioncode();
-    x86VersionInfo.versionCode = appDetailsX86.versioncode();
+    lastVersionUpdate = std::chrono::system_clock::now();
 }
 
 void ApkManager::downloadAndProcessApks() {
-    maybeUpdateLatestVersions();
-    downloadAndProcessApk(playManager.getDeviceARM(), armVersionInfo.versionCode);
+    updateLatestVersions();
+    downloadAndProcessApk(playManager.getDeviceARM(), getARMVersionInfo().versionCode);
     // downloadAndProcessApk(playManager.getDeviceX86(), x86VersionInfo.versionCode);
 }
 

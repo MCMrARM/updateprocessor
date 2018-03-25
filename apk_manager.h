@@ -1,5 +1,9 @@
 #pragma once
 
+#include <chrono>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 #include "play_manager.h"
 
 struct ApkVersionInfo {
@@ -11,20 +15,47 @@ class ApkManager {
 
 private:
 
+    std::thread thread;
+    std::mutex thread_mutex, data_mutex;
+    std::condition_variable stop_cv;
+    bool stopped = false;
+
     PlayManager& playManager;
     ApkVersionInfo armVersionInfo, x86VersionInfo;
     std::string armVersionString;
+    std::chrono::system_clock::time_point lastVersionUpdate;
+
+    void runVersionCheckThread();
+
+    void updateLatestVersions();
 
 public:
 
-    ApkManager(PlayManager& playManager) : playManager(playManager) { }
+    ApkManager(PlayManager& playManager);
 
-    void updateLatestVersions();
-    void maybeUpdateLatestVersions() { updateLatestVersions(); }
+    ~ApkManager() {
+        thread_mutex.lock();
+        stopped = true;
+        thread_mutex.unlock();
+        thread.join();
+    }
 
-    std::string const& getVersionString() const { return armVersionString; }
-    ApkVersionInfo const& getARMVersionInfo() const { return armVersionInfo; }
-    ApkVersionInfo const& getX86VersionInfo() const { return x86VersionInfo; }
+    std::string getVersionString() {
+        std::lock_guard<std::mutex> lk(data_mutex);
+        return armVersionString;
+    }
+    ApkVersionInfo getARMVersionInfo() {
+        std::lock_guard<std::mutex> lk(data_mutex);
+        return armVersionInfo;
+    }
+    ApkVersionInfo getX86VersionInfo() {
+        std::lock_guard<std::mutex> lk(data_mutex);
+        return x86VersionInfo;
+    }
+    std::chrono::system_clock::time_point getLastUpdateTime() {
+        std::lock_guard<std::mutex> lk(data_mutex);
+        return lastVersionUpdate;
+    }
 
     void downloadAndProcessApk(PlayDevice& device, int version);
 

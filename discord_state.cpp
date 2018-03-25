@@ -28,11 +28,16 @@ void DiscordState::onMessage(discord::Message const& m) {
         if (it == std::string::npos)
             command = m.content.substr(0, it);
         if (command == "!get_version") {
-            apkManager.maybeUpdateLatestVersions();
+            std::time_t t = std::chrono::system_clock::to_time_t(apkManager.getLastUpdateTime());
+            char tt[512];
+            if (!std::strftime(tt, sizeof(tt), "%F %T UTC", std::gmtime(&t)))
+                tt[0] = '\0';
+
             std::stringstream ss;
             ss << "Current Minecraft version: " << apkManager.getVersionString()
                << " (ARM version code: " << apkManager.getARMVersionInfo().versionCode << ", "
-               << "X86 version code: " << apkManager.getX86VersionInfo().versionCode << ")";
+               << "X86 version code: " << apkManager.getX86VersionInfo().versionCode << "; "
+               << "checked on " << tt << ")";
             api.createMessage(m.channel, ss.str());
         } else if (command == "!force_download") {
             apkManager.downloadAndProcessApks();
