@@ -1,6 +1,7 @@
 #include "discord_state.h"
 
 #include <fstream>
+#include <regex>
 
 DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : playManager(playManager),
                                                                                apkManager(apkManager) {
@@ -63,13 +64,18 @@ void DiscordState::storeSessionInfo() {
 }
 
 void DiscordState::onNewVersion(int version, std::string const& changelog, std::string const& variant) {
-    std::stringstream ss;
-    ss << "**New version available!** " << apkManager.getVersionString() << " / " << std::to_string(version) <<
-          " " << variant;
+    static std::regex regexNewlines ("<br>");
+
+    discord::CreateMessageParams params ("**New version available**");
+    params.embed["title"] = apkManager.getVersionString();
     if (variant == "arm")
-        ss << "\n" << changelog;
-    std::string notif = ss.str();
+        params.embed["description"] = std::regex_replace(changelog, regexNewlines, "\n");
+    params.embed["footer"]["text"] = "Variant: " + variant + "; version code: " + std::to_string(version);
+
+    if (variant != "arm")
+        params.content = "";
+
     for (std::string const& chan : broadcastChannels) {
-        api.createMessage(chan, notif);
+        api.createMessage(chan, params);
     }
 }
