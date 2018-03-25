@@ -26,6 +26,7 @@ void ApkManager::downloadAndProcessApk(PlayDevice& device, int version, std::str
     std::string outp = getOutputFilePath(version, versionString, archStr);
     FileUtils::mkdirs(FileUtils::getParent(outp));
     device.downloadApk("com.mojang.minecraftpe", version, outp);
+    sendApkForAnalytics(outp);
 }
 
 std::string ApkManager::getOutputFilePath(int version, std::string const& versionString, std::string const& archStr) {
@@ -43,4 +44,22 @@ std::string ApkManager::getOutputFilePath(int version, std::string const& versio
 
     outputDir << "Minecraft " << versionString << " " << archStr << " " << version << ".apk";
     return outputDir.str();
+}
+
+void ApkManager::sendApkForAnalytics(std::string const& path) {
+    CURL* curl = curl_easy_init();
+    if (!curl)
+        throw std::runtime_error("Failed to init curl");
+    curl_mime* form = curl_mime_init(curl);
+    curl_mimepart* field;
+    field = curl_mime_addpart(form);
+    curl_mime_name(field, "file");
+    curl_mime_filedata(field, path.c_str());
+    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:7543/ida/exec");
+    curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
+    auto res = curl_easy_perform(curl);
+    if (res != CURLE_OK)
+        throw std::runtime_error(std::string("Upload request failed: ") + curl_easy_strerror(res));
+    curl_easy_cleanup(curl);
+    curl_mime_free(form);
 }

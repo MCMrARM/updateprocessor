@@ -31,4 +31,6 @@ public:
 
     void downloadAndProcessApks();
 
+    void sendApkForAnalytics(std::string const& path);
+
 };
