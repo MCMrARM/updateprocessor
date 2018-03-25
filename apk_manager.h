@@ -9,6 +9,9 @@
 struct ApkVersionInfo {
     int versionCode = -1;
     int lastDownloadedVersionCode = -1;
+
+    void loadFromConfig(playapi::config const& config, std::string const& prefix);
+    void saveToConfig(playapi::config& config, std::string const& prefix);
 };
 
 class ApkManager {
@@ -21,9 +24,12 @@ private:
     bool stopped = false;
 
     PlayManager& playManager;
+    playapi::config versionCheckConfig;
     ApkVersionInfo armVersionInfo, x86VersionInfo;
     std::string armVersionString;
     std::chrono::system_clock::time_point lastVersionUpdate;
+
+    void saveVersionInfo();
 
     void runVersionCheckThread();
 
