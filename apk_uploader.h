@@ -13,13 +13,17 @@ private:
     std::set<std::string> files;
     playapi::config conf;
     std::string apiAddress;
+    std::string apiToken;
+    char wakeOnLanAddr[6];
 
     std::thread thread;
     std::mutex mutex;
     std::condition_variable condvar;
     bool stopped = false;
 
-    void uploadFile(std::string const& path);
+    void sendWakeOnLan(const char* mac);
+
+    void uploadFile(std::string const& path, bool wol = false);
 
     void saveFileList();
 

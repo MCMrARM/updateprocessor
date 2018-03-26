@@ -1,4 +1,5 @@
 #include "apk_uploader.h"
+#include "wake_on_lan.h"
 
 #include <curl/curl.h>
 #include <fstream>
@@ -10,6 +11,8 @@ ApkUploader::ApkUploader() {
     std::vector<std::string> files = conf.get_array("files", {});
     this->files = std::set<std::string>(std::make_move_iterator(files.begin()), std::make_move_iterator(files.end()));
     apiAddress = conf.get("url");
+    apiToken = conf.get("token");
+    WakeOnLan::parseMacAddress(conf.get("wol_mac"), wakeOnLanAddr);
 
     thread = std::thread(std::bind(&ApkUploader::handleWork, this));
 }
@@ -25,9 +28,11 @@ ApkUploader::~ApkUploader() {
 void ApkUploader::handleWork() {
     std::unique_lock<std::mutex> lk(mutex);
     while (!stopped) {
+        WakeOnLan::sendWakeOnLan(wakeOnLanAddr);
+
         for (auto const& file : files) {
             printf("Upload File: %s\n", file.c_str());
-            //uploadFile(file);
+            // uploadFile(file);
         }
 
         auto until = std::chrono::system_clock::now() + std::chrono::minutes(1);
@@ -50,7 +55,7 @@ void ApkUploader::addFile(std::string const& path) {
     condvar.notify_all();
 }
 
-void ApkUploader::uploadFile(std::string const& path) {
+void ApkUploader::uploadFile(std::string const& path, bool wol) {
     CURL* curl = curl_easy_init();
     if (!curl)
         throw std::runtime_error("Failed to init curl");
@@ -59,6 +64,14 @@ void ApkUploader::uploadFile(std::string const& path) {
     field = curl_mime_addpart(form);
     curl_mime_name(field, "file");
     curl_mime_filedata(field, path.c_str());
+    field = curl_mime_addpart(form);
+    curl_mime_name(field, "token");
+    curl_mime_data(field, apiToken.c_str(), apiToken.length());
+    if (wol) {
+        field = curl_mime_addpart(form);
+        curl_mime_name(field, "wol");
+        curl_mime_data(field, "1", CURL_ZERO_TERMINATED);
+    }
     curl_easy_setopt(curl, CURLOPT_URL, (apiAddress + "exec").c_str());
     curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
     auto res = curl_easy_perform(curl);
