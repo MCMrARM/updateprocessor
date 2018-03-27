@@ -16,7 +16,7 @@ void WakeOnLan::sendWakeOnLan(const char* mac) {
     }
     char message[102];
     memset(message, 0xff, 6);
-    for (int i = 6; i < sizeof(message); i += 16)
+    for (int i = 6; i < sizeof(message); i += 6)
         memcpy(&message[i], mac, 6);
 
     sockaddr_in addr;
