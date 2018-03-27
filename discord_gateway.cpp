@@ -41,6 +41,7 @@ Connection::Connection() {
         inflateReset(&zs);
         reconnectNumber = 0;
         nextReconnectDelay = INITIAL_RECONNECT_DELAY;
+        hasReceivedACK = true;
     });
     hub.onDisconnection([this](uWS::WebSocket<uWS::CLIENT> *ws, int code, char *message, size_t length) {
         printf("Disconnected! %i %s\n", code, std::string(message, length).c_str());
@@ -222,12 +223,14 @@ void Connection::handleHeartbeatACK(Payload const& payload) {
     hasReceivedACK = true;
 }
 
-void Connection::checkReceivedHeartbeatACK() {
+bool Connection::checkReceivedHeartbeatACK() {
     std::unique_lock<std::recursive_mutex> lock(dataMutex);
     if (!hasReceivedACK) {
         lock.unlock();
         ws->close(1001);
+        return false;
     }
+    return true;
 }
 
 void Connection::startHeartbeat(int interval) {
@@ -238,8 +241,8 @@ void Connection::startHeartbeat(int interval) {
     pingTimer->setData(this);
     pingTimer->start([](uS::Timer* timer) {
         Connection* conn = ((Connection*) timer->getData());
-        conn->checkReceivedHeartbeatACK();
-        conn->sendHeartbeat();
+        if (conn->checkReceivedHeartbeatACK())
+            conn->sendHeartbeat();
     }, interval, interval);
 }
 

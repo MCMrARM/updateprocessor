@@ -121,7 +121,7 @@ private:
     void startHeartbeat(int interval);
 
 
-    void checkReceivedHeartbeatACK();
+    bool checkReceivedHeartbeatACK();
 
     void handleDisconnect();
 
