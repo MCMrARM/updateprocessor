@@ -47,8 +47,6 @@ void DiscordState::onMessage(discord::Message const& m) {
             api.createMessage(m.channel, ss.str());
         } else if (command == "!force_download") {
             // apkManager.downloadAndProcessApks();
-        } else if (command == "!kill") {
-            conn.disconnect();
         }
     }
 }
