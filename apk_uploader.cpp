@@ -27,6 +27,8 @@ ApkUploader::~ApkUploader() {
 }
 
 void ApkUploader::handleWork() {
+    bool fromWakeOnLan = false;
+
     std::unique_lock<std::mutex> lk(mutex);
     while (!stopped) {
         auto until = std::chrono::system_clock::now() + std::chrono::minutes(1);
@@ -35,6 +37,7 @@ void ApkUploader::handleWork() {
             bool online = checkIsOnline();
             if (!online) {
                 WakeOnLan::sendWakeOnLan(wakeOnLanAddr);
+                fromWakeOnLan = true;
 
                 until = std::chrono::system_clock::now() + std::chrono::seconds(10);
             } else {
@@ -42,7 +45,7 @@ void ApkUploader::handleWork() {
                 for (auto it = files.begin(); it != files.end(); ) {
                     printf("Upload File: %s\n", it->c_str());
                     try {
-                        uploadFile(*it);
+                        uploadFile(*it, fromWakeOnLan);
                     } catch (std::exception& e) {
                         printf("Error uploading file\n");
                         break;
@@ -50,6 +53,7 @@ void ApkUploader::handleWork() {
                     remove(it->c_str());
                     it = files.erase(it);
                     deletedAny = true;
+                    fromWakeOnLan = false;
                 }
                 if (deletedAny)
                     saveFileList();
