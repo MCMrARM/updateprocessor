@@ -23,6 +23,8 @@ private:
 
     void sendWakeOnLan(const char* mac);
 
+    bool checkIsOnline();
+
     void uploadFile(std::string const& path, bool wol = false);
 
     void saveFileList();

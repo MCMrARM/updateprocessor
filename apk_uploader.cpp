@@ -4,6 +4,7 @@
 #include <curl/curl.h>
 #include <fstream>
 #include <functional>
+#include <sstream>
 
 ApkUploader::ApkUploader() {
     std::ifstream ifs ("priv/apkupload.conf");
@@ -28,14 +29,33 @@ ApkUploader::~ApkUploader() {
 void ApkUploader::handleWork() {
     std::unique_lock<std::mutex> lk(mutex);
     while (!stopped) {
-        WakeOnLan::sendWakeOnLan(wakeOnLanAddr);
+        auto until = std::chrono::system_clock::now() + std::chrono::minutes(1);
 
-        for (auto const& file : files) {
-            printf("Upload File: %s\n", file.c_str());
-            // uploadFile(file);
+        if (!files.empty()) {
+            bool online = checkIsOnline();
+            if (!online) {
+                WakeOnLan::sendWakeOnLan(wakeOnLanAddr);
+
+                until = std::chrono::system_clock::now() + std::chrono::seconds(10);
+            } else {
+                bool deletedAny = false;
+                for (auto it = files.begin(); it != files.end(); ) {
+                    printf("Upload File: %s\n", it->c_str());
+                    try {
+                        uploadFile(*it);
+                    } catch (std::exception& e) {
+                        printf("Error uploading file\n");
+                        break;
+                    }
+                    remove(it->c_str());
+                    it = files.erase(it);
+                    deletedAny = true;
+                }
+                if (deletedAny)
+                    saveFileList();
+            }
         }
 
-        auto until = std::chrono::system_clock::now() + std::chrono::minutes(1);
         condvar.wait_until(lk, until);
     }
 }
@@ -53,6 +73,26 @@ void ApkUploader::addFile(std::string const& path) {
     saveFileList();
     lk.unlock();
     condvar.notify_all();
+}
+
+bool ApkUploader::checkIsOnline() {
+    CURL* curl = curl_easy_init();
+    if (!curl)
+        return false;
+    curl_easy_setopt(curl, CURLOPT_URL, (apiAddress + "isOnline").c_str());
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 200);
+    std::stringstream ss;
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, (curl_write_callback)
+            [](char* ptr, size_t size, size_t nmemb, void* userdata) {
+                ((std::stringstream*) userdata)->write(ptr, size * nmemb);
+                return size * nmemb;
+            });
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ss);
+    auto res = curl_easy_perform(curl);
+    if (res != CURLE_OK)
+        return false;
+    curl_easy_cleanup(curl);
+    return ss.str() == "ok";
 }
 
 void ApkUploader::uploadFile(std::string const& path, bool wol) {
