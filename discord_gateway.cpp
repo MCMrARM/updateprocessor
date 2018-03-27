@@ -6,6 +6,9 @@ using namespace discord::gateway;
 
 static const char* ZLIB_SUFFIX = "\x00\x00\xff\xff";
 
+const int Connection::INITIAL_RECONNECT_DELAY;
+const int Connection::MAX_RECONNECT_DELAY;
+
 std::string Connection::decompress(const char* data, size_t length) {
     zs.avail_in = (uInt) length;
     zs.next_in = (unsigned char*) data;
