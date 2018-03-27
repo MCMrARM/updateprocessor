@@ -1,6 +1,7 @@
 #include "play_device.h"
 
 #include <fstream>
+#include <iostream>
 #include <zlib.h>
 
 playapi::device_info PlayDevice::loadDeviceInfo(std::string const& devicePath) {

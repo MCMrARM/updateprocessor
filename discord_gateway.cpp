@@ -33,13 +33,17 @@ Connection::Connection() {
 
     hub.onConnection([this](uWS::WebSocket<uWS::CLIENT>* ws, uWS::HttpRequest req) {
         printf("Connected!\n");
-        std::unique_lock<std::mutex> lock(dataMutex);
+        std::unique_lock<std::recursive_mutex> lock(dataMutex);
         this->ws = ws;
+        inflateReset(&zs);
+        reconnectNumber = 0;
+        nextReconnectDelay = INITIAL_RECONNECT_DELAY;
     });
     hub.onDisconnection([this](uWS::WebSocket<uWS::CLIENT> *ws, int code, char *message, size_t length) {
         printf("Disconnected! %i %s\n", code, std::string(message, length).c_str());
-        std::unique_lock<std::mutex> lock(dataMutex);
+        std::unique_lock<std::recursive_mutex> lock(dataMutex);
         this->ws = nullptr;
+        handleDisconnect();
     });
     hub.onMessage([this](uWS::WebSocket<uWS::CLIENT>* ws, char* message, size_t length, uWS::OpCode opCode) {
         std::string outp;
@@ -71,9 +75,43 @@ Connection::~Connection() {
     inflateEnd(&zs);
 }
 
-void Connection::connect(std::string const& url) {
-    printf("Connecting: %s\n", url.c_str());
-    hub.connect(url, nullptr);
+void Connection::connect(std::string const& uri) {
+    std::unique_lock<std::recursive_mutex> lock(dataMutex);
+    printf("Connecting: %s\n", uri.c_str());
+    if (ws != nullptr || reconnectNumber != -1)
+        throw std::runtime_error("Already connected");
+    this->uri = uri;
+    reconnectNumber = 0;
+    nextReconnectDelay = INITIAL_RECONNECT_DELAY;
+    hub.connect(uri, nullptr);
+
+    if (reconnectHandle == nullptr) {
+        reconnectHandle = new uS::Async(hub.getLoop());
+        reconnectHandle->start([](uS::Async*) {});
+    }
+}
+
+void Connection::handleDisconnect() {
+    std::unique_lock<std::recursive_mutex> lock(dataMutex);
+    long long delay = nextReconnectDelay;
+    reconnectNumber++;
+    nextReconnectDelay = std::min(nextReconnectDelay * 2, MAX_RECONNECT_DELAY);
+
+    if (pingTimer != nullptr) {
+        pingTimer->stop();
+        pingTimer->close();
+        pingTimer = nullptr;
+    }
+    if (reconnectTimer == nullptr)
+        reconnectTimer = new uS::Timer(hub.getLoop());
+    else
+        reconnectTimer->stop();
+    reconnectTimer->setData(this);
+    reconnectTimer->start([](uS::Timer* timer) {
+        Connection* conn = ((Connection*) timer->getData());
+        std::unique_lock<std::recursive_mutex> lock(conn->dataMutex);
+        conn->hub.connect(conn->uri, nullptr);
+    }, delay, 0);
 }
 
 void Connection::sendPayload(Payload const& payload) {
@@ -85,7 +123,7 @@ void Connection::sendPayload(Payload const& payload) {
         pk["t"] = payload.eventName;
     }
     std::string data = pk.dump();
-    std::unique_lock<std::mutex> lock(dataMutex);
+    std::unique_lock<std::recursive_mutex> lock(dataMutex);
     if (ws == nullptr)
         throw std::runtime_error("No connection available");
     printf("Send message: %s\n", data.c_str());
@@ -93,7 +131,7 @@ void Connection::sendPayload(Payload const& payload) {
 }
 
 void Connection::sendHeartbeat() {
-    std::unique_lock<std::mutex> lock(dataMutex);
+    std::unique_lock<std::recursive_mutex> lock(dataMutex);
     hasReceivedACK = false;
     Payload ping;
     ping.op = Payload::Op::Heartbeat;
@@ -106,7 +144,7 @@ void Connection::sendHeartbeat() {
 }
 
 void Connection::sendIdentifyRequest() {
-    std::unique_lock<std::mutex> lock(dataMutex);
+    std::unique_lock<std::recursive_mutex> lock(dataMutex);
     Payload reply;
     reply.op = Payload::Op::Identify;
     reply.data["token"] = token;
@@ -136,7 +174,7 @@ void Connection::handlePayload(Payload const& payload) {
 void Connection::handleHelloPayload(Payload const& payload) {
     startHeartbeat(payload.data["heartbeat_interval"]);
 
-    std::unique_lock<std::mutex> lock(dataMutex);
+    std::unique_lock<std::recursive_mutex> lock(dataMutex);
     if (!sessionId.empty()) {
         Payload reply;
         reply.op = Payload::Op::Resume;
@@ -157,16 +195,16 @@ void Connection::handleInvalidSessionPayload(Payload const& payload) {
 
 void Connection::handleDispatchPayload(Payload const& payload) {
     {
-        std::unique_lock<std::mutex> lock(dataMutex);
+        std::unique_lock<std::recursive_mutex> lock(dataMutex);
         lastSeqReceived = payload.sequenceNumber;
     }
 
     if (payload.eventName == "READY") {
-        std::unique_lock<std::mutex> lock(dataMutex);
+        std::unique_lock<std::recursive_mutex> lock(dataMutex);
         sessionId = payload.data["session_id"];
     } else if (payload.eventName == "MESSAGE_CREATE") {
         Message m = Message::fromJson(payload.data);
-        std::unique_lock<std::mutex> lock(dataMutex);
+        std::unique_lock<std::recursive_mutex> lock(dataMutex);
         if (messageCallback)
             messageCallback(m);
     }
@@ -177,12 +215,12 @@ void Connection::handleHeartbeat(Payload const& payload) {
 }
 
 void Connection::handleHeartbeatACK(Payload const& payload) {
-    std::unique_lock<std::mutex> lock(dataMutex);
+    std::unique_lock<std::recursive_mutex> lock(dataMutex);
     hasReceivedACK = true;
 }
 
 void Connection::checkReceivedHeartbeatACK() {
-    std::unique_lock<std::mutex> lock(dataMutex);
+    std::unique_lock<std::recursive_mutex> lock(dataMutex);
     if (!hasReceivedACK) {
         lock.unlock();
         ws->close(1001);
@@ -190,7 +228,7 @@ void Connection::checkReceivedHeartbeatACK() {
 }
 
 void Connection::startHeartbeat(int interval) {
-    std::unique_lock<std::mutex> lock(dataMutex);
+    std::unique_lock<std::recursive_mutex> lock(dataMutex);
     if (pingTimer != nullptr)
         return;
     pingTimer = new uS::Timer(hub.getLoop());
@@ -203,7 +241,7 @@ void Connection::startHeartbeat(int interval) {
 }
 
 void Connection::setStatus(StatusInfo const& status) {
-    std::unique_lock<std::mutex> lock(dataMutex);
+    std::unique_lock<std::recursive_mutex> lock(dataMutex);
     this->status = status;
     if (ws != nullptr) {
         Payload reply;

@@ -74,12 +74,19 @@ public:
     using MessageCallback = std::function<void (Message const&)>;
 
 private:
+    static const int INITIAL_RECONNECT_DELAY = 500;
+    static const int MAX_RECONNECT_DELAY = 10 * 60 * 1000; // 10 minutes
+
     uWS::Hub hub;
+    // TODO: Free those in the destructor?
     uWS::WebSocket<uWS::CLIENT>* ws = nullptr;
     uS::Timer* pingTimer = nullptr;
+    uS::Timer* reconnectTimer = nullptr;
+    uS::Async* reconnectHandle = nullptr;
     z_stream zs;
 
-    std::mutex dataMutex;
+    std::recursive_mutex dataMutex;
+    std::string uri;
     std::string token;
     std::string sessionId;
     StatusInfo status;
@@ -88,6 +95,8 @@ private:
     bool isCompressed = true;
     bool hasReceivedACK = true;
     MessageCallback messageCallback;
+    int reconnectNumber = -1;
+    int nextReconnectDelay = INITIAL_RECONNECT_DELAY;
 
     std::string decompress(const char* data, size_t length);
 
@@ -114,47 +123,54 @@ private:
 
     void checkReceivedHeartbeatACK();
 
+    void handleDisconnect();
+
 public:
     Connection();
 
     ~Connection();
 
-    void connect(std::string const& url);
+    void connect(std::string const& uri);
 
     void connect(Api& api) {
         connect(api.getGatewayUrl() + "/?v=6&encoding=json&compress=zlib-stream");
     }
 
     void setToken(std::string const& token) {
-        std::unique_lock<std::mutex> lock(dataMutex);
+        std::unique_lock<std::recursive_mutex> lock(dataMutex);
         this->token = token;
     }
 
     void setSessionId(std::string const& session, int seq) {
-        std::unique_lock<std::mutex> lock(dataMutex);
+        std::unique_lock<std::recursive_mutex> lock(dataMutex);
         sessionId = session;
         lastSeqReceived = seq;
     }
 
     inline std::string const& getSession() {
-        std::unique_lock<std::mutex> lock(dataMutex);
+        std::unique_lock<std::recursive_mutex> lock(dataMutex);
         return sessionId;
     }
 
     inline int getSessionSeq() {
-        std::unique_lock<std::mutex> lock(dataMutex);
+        std::unique_lock<std::recursive_mutex> lock(dataMutex);
         return lastSeqReceived;
     }
 
     void setStatus(StatusInfo const& status);
 
     void setMessageCallback(MessageCallback const& callback) {
-        std::unique_lock<std::mutex> lock(dataMutex);
+        std::unique_lock<std::recursive_mutex> lock(dataMutex);
         messageCallback = callback;
     }
 
     void loop() {
         hub.run();
+    }
+
+    void disconnect() {
+        std::unique_lock<std::recursive_mutex> lock(dataMutex);
+        ws->close();
     }
 
 };

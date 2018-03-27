@@ -13,8 +13,8 @@ DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : p
     api.setBothAuth(discordConf.get("token"));
     conn.setToken(discordConf.get("token"));
     conn.setSessionId(discordConf.get("session_id"), discordConf.get_int("session_seq"));
-    conn.connect(api);
     conn.setMessageCallback(std::bind(&DiscordState::onMessage, this, std::placeholders::_1));
+    conn.connect(api);
 
     discord::gateway::StatusInfo status;
     status.since = std::chrono::system_clock::now();
@@ -47,6 +47,8 @@ void DiscordState::onMessage(discord::Message const& m) {
             api.createMessage(m.channel, ss.str());
         } else if (command == "!force_download") {
             // apkManager.downloadAndProcessApks();
+        } else if (command == "!kill") {
+            conn.disconnect();
         }
     }
 }
