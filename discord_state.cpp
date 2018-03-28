@@ -26,7 +26,7 @@ DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : p
     conn.setStatus(status);
 
     using namespace std::placeholders;
-    apkManager.setNewVersionCallback(std::bind(&DiscordState::onNewVersion, this, _1, _2, _3));
+    apkManager.setNewVersionCallback(std::bind(&DiscordState::onNewVersion, this, _1, _2, _3, _4));
 }
 
 void DiscordState::onMessage(discord::Message const& m) {
@@ -41,20 +41,31 @@ void DiscordState::onMessage(discord::Message const& m) {
             if (!std::strftime(tt, sizeof(tt), "%F %T UTC", std::gmtime(&t)))
                 tt[0] = '\0';
 
-            std::stringstream ss;
-            ss << "Current Minecraft version: " << apkManager.getVersionString()
-               << " (ARM version code: " << apkManager.getARMVersionInfo().versionCode << ", "
-               << "X86 version code: " << apkManager.getX86VersionInfo().versionCode << "; "
-               << "checked on " << tt << ")";
-            api.createMessage(m.channel, ss.str());
+            discord::CreateMessageParams params ("Here's a list of the currently available Minecraft versions:");
+            params.embed["title"] = "Minecraft versions";
+            params.embed["fields"][0]["name"] = "Release";
+            params.embed["fields"][0]["value"] = buildVersionFieldString(apkManager.getReleaseARMVersionInfo(),
+                                                                         apkManager.getReleaseX86VersionInfo());
+            params.embed["fields"][1]["name"] = "Beta";
+            params.embed["fields"][1]["value"] = buildVersionFieldString(apkManager.getBetaARMVersionInfo(),
+                                                                         apkManager.getBetaX86VersionInfo());
+            params.embed["footer"]["text"] = std::string("Checked on ") + tt;
+            api.createMessage(m.channel, params);
         } else if (command == "!force_download_arm" && checkOp(m)) {
             try {
-                apkManager.downloadAndProcessApk(playManager.getDeviceARM(), std::stoi(m.content.substr(it + 1)));
+                apkManager.downloadAndProcessApk(playManager.getBetaDeviceARM(), std::stoi(m.content.substr(it + 1)));
             } catch(std::exception& e) {
                 api.createMessage(m.channel, "Failed to download the apk");
             }
         }
     }
+}
+
+std::string DiscordState::buildVersionFieldString(ApkVersionInfo const& arm, ApkVersionInfo const& x86) {
+    std::stringstream ss;
+    ss << "**" << arm.versionString << "** "
+       << " (ARM version code: " << arm.versionCode << ", x86 version code: " << x86.versionCode << ")";
+    return ss.str();
 }
 
 bool DiscordState::checkOp(discord::Message const& m) {
@@ -77,16 +88,20 @@ void DiscordState::storeSessionInfo() {
     discordConf.save(ofs);
 }
 
-void DiscordState::onNewVersion(int version, std::string const& changelog, std::string const& variant) {
+void DiscordState::onNewVersion(int version, std::string const& versionString,
+                                std::string const& changelog, std::string const& variant) {
     static std::regex regexNewlines ("<br>");
 
-    discord::CreateMessageParams params ("**New version available**");
-    params.embed["title"] = apkManager.getVersionString();
-    if (variant == "arm")
+    bool isBeta = variant.length() >= 5 && memcmp(variant.c_str(), "beta/", 5) == 0;
+    bool isARM = variant == "beta/arm" || variant == "release/arm";
+
+    discord::CreateMessageParams params (isBeta ? "**New beta available**" : "**New version available**");
+    params.embed["title"] = versionString + (isBeta ? " (beta)" : "");
+    if (isARM)
         params.embed["description"] = std::regex_replace(changelog, regexNewlines, "\n");
     params.embed["footer"]["text"] = "Variant: " + variant + "; version code: " + std::to_string(version);
 
-    if (variant != "arm")
+    if (!isARM)
         params.content = "";
 
     for (std::string const& chan : broadcastChannels) {

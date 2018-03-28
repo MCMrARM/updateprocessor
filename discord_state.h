@@ -15,6 +15,8 @@ private:
 
     bool checkOp(discord::Message const& m);
 
+    std::string buildVersionFieldString(ApkVersionInfo const& arm, ApkVersionInfo const& x86);
+
 public:
     discord::Api api;
     discord::gateway::Connection conn;
@@ -23,7 +25,8 @@ public:
 
     void onMessage(discord::Message const& m);
 
-    void onNewVersion(int version, std::string const& changelog, std::string const& variant);
+    void onNewVersion(int version, std::string const& versionString,
+                      std::string const& changelog, std::string const& variant);
 
     void loop();
 

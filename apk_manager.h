@@ -10,6 +10,7 @@
 struct ApkVersionInfo {
     int versionCode = -1;
     int lastDownloadedVersionCode = -1;
+    std::string versionString;
 
     void loadFromConfig(playapi::config const& config, std::string const& prefix);
     void saveToConfig(playapi::config& config, std::string const& prefix);
@@ -18,10 +19,12 @@ struct ApkVersionInfo {
 class ApkManager {
 
 public:
-    using NewVersionCallback = std::function<void (int version, std::string const& changelog,
-                                                   std::string const& variant)>;
+    using NewVersionCallback = std::function<void (int version, std::string const& versionString,
+                                                   std::string const& changelog, std::string const& variant)>;
 
 private:
+
+    static const char* PKG_NAME;
 
     std::thread thread;
     std::mutex thread_mutex, data_mutex, cb_mutex;
@@ -32,8 +35,8 @@ private:
     ApkUploader uploader;
     NewVersionCallback newVersionCallback;
     playapi::config versionCheckConfig;
-    ApkVersionInfo armVersionInfo, x86VersionInfo;
-    std::string armVersionString;
+    ApkVersionInfo releaseARMVersionInfo, releaseX86VersionInfo;
+    ApkVersionInfo betaARMVersionInfo, betaX86VersionInfo;
     std::chrono::system_clock::time_point lastVersionUpdate;
 
     void saveVersionInfo();
@@ -41,6 +44,15 @@ private:
     void runVersionCheckThread();
 
     void updateLatestVersions();
+
+    struct CheckResult {
+        int versionCode;
+        std::string changelog;
+        bool hasNewVersion;
+        bool shouldDownload;
+    };
+
+    CheckResult updateLatestVersion(PlayDevice& device, ApkVersionInfo& versionInfo);
 
     void downloadAndProcessApk(PlayDevice& device, int version, ApkVersionInfo& info);
 
@@ -63,17 +75,21 @@ public:
         newVersionCallback = callback;
     }
 
-    std::string getVersionString() {
+    ApkVersionInfo getReleaseARMVersionInfo() {
         std::lock_guard<std::mutex> lk(data_mutex);
-        return armVersionString;
+        return releaseARMVersionInfo;
     }
-    ApkVersionInfo getARMVersionInfo() {
+    ApkVersionInfo getReleaseX86VersionInfo() {
         std::lock_guard<std::mutex> lk(data_mutex);
-        return armVersionInfo;
+        return releaseX86VersionInfo;
     }
-    ApkVersionInfo getX86VersionInfo() {
+    ApkVersionInfo getBetaARMVersionInfo() {
         std::lock_guard<std::mutex> lk(data_mutex);
-        return x86VersionInfo;
+        return betaARMVersionInfo;
+    }
+    ApkVersionInfo getBetaX86VersionInfo() {
+        std::lock_guard<std::mutex> lk(data_mutex);
+        return betaX86VersionInfo;
     }
     std::chrono::system_clock::time_point getLastUpdateTime() {
         std::lock_guard<std::mutex> lk(data_mutex);
