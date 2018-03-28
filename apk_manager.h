@@ -80,4 +80,6 @@ public:
         return lastVersionUpdate;
     }
 
+    void downloadAndProcessApk(PlayDevice& device, int version);
+
 };

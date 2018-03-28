@@ -13,12 +13,14 @@ struct Message {
     Snowflake id;
     Snowflake channel;
     std::string content;
+    std::string author_id;
 
     static Message fromJson(nlohmann::json const& j) {
         Message ret;
         ret.id = j["id"];
         ret.channel = j["channel_id"];
         ret.content = j["content"];
+        ret.author_id = j["author"]["id"];
         return ret;
     }
 

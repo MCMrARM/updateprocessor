@@ -11,6 +11,9 @@ private:
     PlayManager& playManager;
     ApkManager& apkManager;
     std::vector<std::string> broadcastChannels;
+    std::set<std::string> operatorList;
+
+    bool checkOp(discord::Message const& m);
 
 public:
     discord::Api api;

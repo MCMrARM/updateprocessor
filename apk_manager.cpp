@@ -84,22 +84,24 @@ void ApkManager::updateLatestVersions() {
             newVersionCallback(appDetailsX86.versioncode(), appDetailsX86.recentchangeshtml(), "x86");
     }
 
-    if (downloadARMApk) {
+    if (downloadARMApk)
         downloadAndProcessApk(playManager.getDeviceARM(), appDetailsARM.versioncode(), armVersionInfo);
-    }
     if (downloadX86Apk)
         downloadAndProcessApk(playManager.getDeviceX86(), appDetailsX86.versioncode(), x86VersionInfo);
-
 }
 
 void ApkManager::downloadAndProcessApk(PlayDevice& device, int version, ApkVersionInfo& info) {
-    std::string outp = "priv/apks/com.mojang.minecraftpe " + std::to_string(version) + ".apk";
-    FileUtils::mkdirs(FileUtils::getParent(outp));
-    device.downloadApk("com.mojang.minecraftpe", version, outp);
-    uploader.addFile(outp);
+    downloadAndProcessApk(device, version);
     std::unique_lock<std::mutex> lk(data_mutex);
     if (version > info.lastDownloadedVersionCode) {
         info.lastDownloadedVersionCode = version;
         saveVersionInfo();
     }
+}
+
+void ApkManager::downloadAndProcessApk(PlayDevice& device, int version) {
+    std::string outp = "priv/apks/com.mojang.minecraftpe " + std::to_string(version) + ".apk";
+    FileUtils::mkdirs(FileUtils::getParent(outp));
+    device.downloadApk("com.mojang.minecraftpe", version, outp);
+    uploader.addFile(outp);
 }

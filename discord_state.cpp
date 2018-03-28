@@ -9,6 +9,8 @@ DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : p
     discordConf.load(ifs);
 
     broadcastChannels = discordConf.get_array("broadcast_channels", {});
+    std::vector<std::string> ops = discordConf.get_array("ops", {});
+    operatorList = std::set<std::string>(ops.begin(), ops.end());
 
     api.setBothAuth(discordConf.get("token"));
     conn.setToken(discordConf.get("token"));
@@ -31,7 +33,7 @@ void DiscordState::onMessage(discord::Message const& m) {
     if (m.content.size() > 0 && m.content[0] == '!') {
         std::string command = m.content;
         auto it = command.find(' ');
-        if (it == std::string::npos)
+        if (it != std::string::npos)
             command = m.content.substr(0, it);
         if (command == "!get_version") {
             std::time_t t = std::chrono::system_clock::to_time_t(apkManager.getLastUpdateTime());
@@ -45,10 +47,22 @@ void DiscordState::onMessage(discord::Message const& m) {
                << "X86 version code: " << apkManager.getX86VersionInfo().versionCode << "; "
                << "checked on " << tt << ")";
             api.createMessage(m.channel, ss.str());
-        } else if (command == "!force_download") {
-            // apkManager.downloadAndProcessApks();
+        } else if (command == "!force_download_arm" && checkOp(m)) {
+            try {
+                apkManager.downloadAndProcessApk(playManager.getDeviceARM(), std::stoi(m.content.substr(it + 1)));
+            } catch(std::exception& e) {
+                api.createMessage(m.channel, "Failed to download the apk");
+            }
         }
     }
+}
+
+bool DiscordState::checkOp(discord::Message const& m) {
+    if (operatorList.count(m.author_id) > 0)
+        return true;
+    api.createMessage(m.channel, "Doesn't seem like you have the permissions to use this command, do you? ;)  " +
+            std::string(m.author_id));
+    return false;
 }
 
 void DiscordState::loop() {
