@@ -47,7 +47,7 @@ void ApkUploader::handleWork() {
                     try {
                         uploadFile(*it, fromWakeOnLan);
                     } catch (std::exception& e) {
-                        printf("Error uploading file\n");
+                        printf("Error uploading file %s\n", e.what());
                         break;
                     }
                     remove(it->c_str());
@@ -119,8 +119,14 @@ void ApkUploader::uploadFile(std::string const& path, bool wol) {
     curl_easy_setopt(curl, CURLOPT_URL, (apiAddress + "exec").c_str());
     curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
     auto res = curl_easy_perform(curl);
-    if (res != CURLE_OK)
-        throw std::runtime_error(std::string("Upload request failed: ") + curl_easy_strerror(res));
+    long res_code = 0L;
+    if (res == CURLE_OK)
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &res_code);
     curl_easy_cleanup(curl);
     curl_mime_free(form);
+    if (res != CURLE_OK)
+        throw std::runtime_error(std::string("Upload request failed: ") + curl_easy_strerror(res));
+    if (res_code != 200)
+        throw std::runtime_error(std::string("Upload request failed with status code ") + std::to_string(res_code));
+
 }
