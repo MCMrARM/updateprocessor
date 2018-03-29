@@ -108,7 +108,7 @@ ApkManager::CheckResult ApkManager::updateLatestVersion(PlayDevice& device, ApkV
     versionInfo.versionCode = appDetails.versioncode();
 
     if (ret.hasNewVersion) {
-        auto fullDetails = playManager.getReleaseDeviceARM().getApi().details(PKG_NAME);
+        auto fullDetails = device.getApi().details(PKG_NAME);
         auto fullAppDetails = fullDetails.payload().detailsresponse().docv2().details().appdetails();
         versionInfo.versionString = fullAppDetails.versionstring();
     }
