@@ -3,6 +3,7 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <vector>
 #include <condition_variable>
 #include "play_manager.h"
 #include "apk_uploader.h"
@@ -33,7 +34,7 @@ private:
 
     PlayManager& playManager;
     ApkUploader uploader;
-    NewVersionCallback newVersionCallback;
+    std::vector<NewVersionCallback> newVersionCallback;
     playapi::config versionCheckConfig;
     ApkVersionInfo releaseARMVersionInfo, releaseX86VersionInfo;
     ApkVersionInfo betaARMVersionInfo, betaX86VersionInfo;
@@ -70,9 +71,9 @@ public:
 
     void startChecking();
 
-    void setNewVersionCallback(NewVersionCallback callback) {
+    void addNewVersionCallback(NewVersionCallback callback) {
         std::lock_guard<std::mutex> lk(cb_mutex);
-        newVersionCallback = callback;
+        newVersionCallback.emplace_back(callback);
     }
 
     ApkVersionInfo getReleaseARMVersionInfo() {

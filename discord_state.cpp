@@ -26,7 +26,7 @@ DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : p
     conn.setStatus(status);
 
     using namespace std::placeholders;
-    apkManager.setNewVersionCallback(std::bind(&DiscordState::onNewVersion, this, _1, _2, _3, _4));
+    apkManager.addNewVersionCallback(std::bind(&DiscordState::onNewVersion, this, _1, _2, _3, _4));
 }
 
 void DiscordState::onMessage(discord::Message const& m) {

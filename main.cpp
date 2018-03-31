@@ -3,6 +3,7 @@
 
 #include "play_manager.h"
 #include "discord_state.h"
+#include "telegram_state.h"
 
 
 int main() {
@@ -13,6 +14,7 @@ int main() {
 
     //playManager.getDeviceARM().downloadApk("com.mojang.minecraftpe", 871021311, "priv/test.apk");
     static DiscordState* discordState = new DiscordState(playManager, apkManager);
+    TelegramState telegramState(apkManager);
 
     apkManager.startChecking();
 

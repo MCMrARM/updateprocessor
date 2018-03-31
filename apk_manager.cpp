@@ -80,10 +80,15 @@ void ApkManager::updateLatestVersions() {
     lk.unlock();
     if (hasAnyUpdate) {
         std::unique_lock<std::mutex> lk_cb(cb_mutex);
-        if (newVersionCallback) {
-            for (auto const& v : variants) {
-                if (v.result.hasNewVersion)
-                    newVersionCallback(v.result.versionCode, v.versionString, v.result.changelog, v.variantName);
+        for (auto const& v : variants) {
+            if (!v.result.hasNewVersion)
+                continue;
+            for (auto const& cb : newVersionCallback) {
+                try {
+                    cb(v.result.versionCode, v.versionString, v.result.changelog, v.variantName);
+                } catch (std::exception& e) {
+                    std::cerr << "Error processing callback " << e.what() << "\n";
+                }
             }
         }
     }
