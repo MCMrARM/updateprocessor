@@ -1,6 +1,7 @@
 #include "apk_manager.h"
 #include "file_utils.h"
 #include <fstream>
+#include <iostream>
 
 const char* ApkManager::PKG_NAME = "com.mojang.minecraftpe";
 
@@ -48,6 +49,7 @@ void ApkManager::runVersionCheckThread() {
     }
 }
 
+
 void ApkManager::updateLatestVersions() {
     std::unique_lock<std::mutex> lk(data_mutex);
 
@@ -94,7 +96,7 @@ void ApkManager::updateLatestVersions() {
     }
 
     for (auto const& v : variants) {
-        if (v.result.hasNewVersion)
+        if (v.result.shouldDownload)
             downloadAndProcessApk(v.device, v.result.versionCode, v.versionInfo);
     }
 }
@@ -104,7 +106,14 @@ ApkManager::CheckResult ApkManager::updateLatestVersion(PlayDevice& device, ApkV
     playapi::api::bulk_details_request r;
     r.name = PKG_NAME;
     r.installed_version_code = versionInfo.lastDownloadedVersionCode;
-    auto details = device.getApi().bulk_details({r});
+    playapi::proto::finsky::response::ResponseWrapper details;
+    try {
+        details = device.getApi().bulk_details({r});
+    } catch (std::exception& e) {
+        ret.hasNewVersion = false;
+        ret.shouldDownload = false;
+        return ret;
+    }
     auto appDetails = details.payload().bulkdetailsresponse().entry(0).doc().details().appdetails();
     ret.hasNewVersion = (versionInfo.versionCode != appDetails.versioncode());
     ret.shouldDownload = (versionInfo.lastDownloadedVersionCode != appDetails.versioncode());
