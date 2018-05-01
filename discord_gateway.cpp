@@ -43,6 +43,11 @@ Connection::Connection() {
         nextReconnectDelay = INITIAL_RECONNECT_DELAY;
         hasReceivedACK = true;
     });
+    hub.onError([this](void*) {
+        printf("Unknown error\n");
+        std::unique_lock<std::recursive_mutex> lock(dataMutex);
+        handleDisconnect();
+    });
     hub.onDisconnection([this](uWS::WebSocket<uWS::CLIENT> *ws, int code, char *message, size_t length) {
         printf("Disconnected! %i %s\n", code, std::string(message, length).c_str());
         std::unique_lock<std::recursive_mutex> lock(dataMutex);

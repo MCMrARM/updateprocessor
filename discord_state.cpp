@@ -57,6 +57,8 @@ void DiscordState::onMessage(discord::Message const& m) {
             } catch(std::exception& e) {
                 api.createMessage(m.channel, "Failed to download the apk");
             }
+        } else if (command == "!kill" && checkOp(m)) {
+            conn.disconnect();
         }
     }
 }
