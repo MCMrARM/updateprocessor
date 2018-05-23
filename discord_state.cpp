@@ -51,6 +51,9 @@ void DiscordState::onMessage(discord::Message const& m) {
                                                                          apkManager.getBetaX86VersionInfo());
             params.embed["footer"]["text"] = std::string("Checked on ") + tt;
             api.createMessage(m.channel, params);
+        } else if (command == "!force_check" && checkOp(m)) {
+            apkManager.requestForceCheck();
+            api.createMessage(m.channel, "Did force check!");
         } else if (command == "!force_download_arm" && checkOp(m)) {
             try {
                 apkManager.downloadAndProcessApk(playManager.getBetaDeviceARM(), std::stoi(m.content.substr(it + 1)));
@@ -59,6 +62,14 @@ void DiscordState::onMessage(discord::Message const& m) {
             }
         } else if (command == "!kill" && checkOp(m)) {
             conn.disconnect();
+        } else if (command == "!getip" && checkOp(m)) {
+            try {
+                playapi::http_request req ("http://api.ipify.org/");
+                std::string ip = req.perform().get_body();
+                api.createMessage(m.channel, "My IP is: " + ip);
+            } catch (std::exception& e) {
+                api.createMessage(m.channel, "Error getting IP");
+            }
         }
     }
 }

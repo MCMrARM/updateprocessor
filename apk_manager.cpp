@@ -14,6 +14,10 @@ ApkManager::ApkManager(PlayManager& playManager) : playManager(playManager) {
     betaX86VersionInfo.loadFromConfig(versionCheckConfig, "beta.x86.");
 }
 
+void ApkManager::requestForceCheck() {
+    stop_cv.notify_all();
+}
+
 void ApkManager::saveVersionInfo() {
     releaseARMVersionInfo.saveToConfig(versionCheckConfig, "release.arm.");
     releaseX86VersionInfo.saveToConfig(versionCheckConfig, "release.x86.");
@@ -45,7 +49,7 @@ void ApkManager::runVersionCheckThread() {
         updateLatestVersions();
 
         auto until = std::chrono::system_clock::now() + std::chrono::minutes(10);
-        stop_cv.wait_until(lk, until, [this] { return stopped; });
+        stop_cv.wait_until(lk, until);
     }
 }
 

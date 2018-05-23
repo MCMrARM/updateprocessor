@@ -99,4 +99,6 @@ public:
 
     void downloadAndProcessApk(PlayDevice& device, int version);
 
+    void requestForceCheck();
+
 };
