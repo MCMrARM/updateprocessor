@@ -50,7 +50,10 @@ void DiscordState::onMessage(discord::Message const& m) {
             params.embed["fields"][1]["value"] = buildVersionFieldString(apkManager.getBetaARMVersionInfo(),
                                                                          apkManager.getBetaX86VersionInfo());
             params.embed["footer"]["text"] = std::string("Checked on ") + tt;
-            api.createMessage(m.channel, params);
+            try {
+                api.createMessage(m.channel, params);
+            } catch (std::exception& e) {
+            }
         } else if (command == "!force_check" && checkOp(m)) {
             apkManager.requestForceCheck();
             api.createMessage(m.channel, "Did force check!");
