@@ -113,7 +113,14 @@ ApkManager::CheckResult ApkManager::updateLatestVersion(PlayDevice& device, ApkV
     playapi::proto::finsky::response::ResponseWrapper details;
     try {
         details = device.getApi().bulk_details({r});
+        if (details.payload().bulkdetailsresponse().entry_size() != 1)
+            throw std::runtime_error("Invalid response: entry_size() != 1");
+        if (!details.payload().bulkdetailsresponse().entry(0).has_doc() ||
+                !details.payload().bulkdetailsresponse().entry(0).doc().has_details() ||
+                !details.payload().bulkdetailsresponse().entry(0).doc().details().has_appdetails())
+            throw std::runtime_error("Invalid response: does not have details");
     } catch (std::exception& e) {
+        std::cout << "Error getting details: " << e.what() << "\n";
         ret.hasNewVersion = false;
         ret.shouldDownload = false;
         return ret;
