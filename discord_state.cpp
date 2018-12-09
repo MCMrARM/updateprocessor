@@ -35,7 +35,7 @@ void DiscordState::onMessage(discord::Message const& m) {
         auto it = command.find(' ');
         if (it != std::string::npos)
             command = m.content.substr(0, it);
-        if (command == "!get_version") {
+        if (command == "!version" || command == "!get_version") {
             std::time_t t = std::chrono::system_clock::to_time_t(apkManager.getLastUpdateTime());
             char tt[512];
             if (!std::strftime(tt, sizeof(tt), "%F %T UTC", std::gmtime(&t)))
