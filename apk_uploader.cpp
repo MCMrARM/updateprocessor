@@ -36,7 +36,11 @@ void ApkUploader::handleWork() {
         if (!files.empty()) {
             bool online = checkIsOnline();
             if (!online) {
-                WakeOnLan::sendWakeOnLan(wakeOnLanAddr);
+                try {
+                    WakeOnLan::sendWakeOnLan(wakeOnLanAddr);
+                } catch (std::exception& e) {
+                    printf("Error waking PC: %s\n", e.what());
+                }
                 fromWakeOnLan = true;
 
                 until = std::chrono::system_clock::now() + std::chrono::seconds(10);
