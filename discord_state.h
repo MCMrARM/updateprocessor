@@ -3,6 +3,7 @@
 #include "play_manager.h"
 #include "discord_gateway.h"
 #include "apk_manager.h"
+#include "win10_store_manager.h"
 
 class DiscordState {
 
@@ -11,6 +12,7 @@ private:
     PlayManager& playManager;
     ApkManager& apkManager;
     std::vector<std::string> broadcastChannels;
+    std::vector<std::string> broadcastChannelsW10;
     std::set<std::string> operatorList;
 
     bool checkOp(discord::Message const& m);
@@ -23,10 +25,14 @@ public:
 
     DiscordState(PlayManager& playManager, ApkManager& apkManager);
 
+    void addWin10StoreMgr(Win10StoreManager& mgr);
+
     void onMessage(discord::Message const& m);
 
     void onNewVersion(int version, std::string const& versionString,
                       std::string const& changelog, std::string const& variant);
+
+    void onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const& u);
 
     void loop();
 

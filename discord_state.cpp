@@ -9,6 +9,7 @@ DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : p
     discordConf.load(ifs);
 
     broadcastChannels = discordConf.get_array("broadcast_channels", {});
+    broadcastChannelsW10 = discordConf.get_array("broadcast_channels_w10", {});
     std::vector<std::string> ops = discordConf.get_array("ops", {});
     operatorList = std::set<std::string>(ops.begin(), ops.end());
 
@@ -27,6 +28,11 @@ DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : p
 
     using namespace std::placeholders;
     apkManager.addNewVersionCallback(std::bind(&DiscordState::onNewVersion, this, _1, _2, _3, _4));
+}
+
+void DiscordState::addWin10StoreMgr(Win10StoreManager &mgr) {
+    using namespace std::placeholders;
+    mgr.addNewVersionCallback(std::bind(&DiscordState::onNewWin10Version, this, _1));
 }
 
 void DiscordState::onMessage(discord::Message const& m) {
@@ -121,6 +127,24 @@ void DiscordState::onNewVersion(int version, std::string const& versionString,
         params.content = "";
 
     for (std::string const& chan : broadcastChannels) {
+        api.createMessage(chan, params);
+    }
+}
+
+void DiscordState::onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const &u) {
+    discord::CreateMessageParams params ("**New Windows 10 release**");
+    std::string desc;
+    params.embed["fields"] = nlohmann::json::array();
+    for (auto const& e : u) {
+        desc += "**" + e.packageMoniker + "**\n" + e.updateId + "\n";
+        nlohmann::json val;
+        val["name"] = e.packageMoniker;
+        val["value"] = e.updateId;
+        params.embed["fields"].push_back(val);
+    }
+//    params.embed["description"] = desc;
+
+    for (std::string const& chan : broadcastChannelsW10) {
         api.createMessage(chan, params);
     }
 }
