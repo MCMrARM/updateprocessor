@@ -7,3 +7,6 @@
 [submodule "json"]
 	path = json
 	url = https://github.com/nlohmann/json.git
+[submodule "rapidxml"]
+	path = rapidxml
+	url = https://github.com/minecraft-linux/rapidxml.git
