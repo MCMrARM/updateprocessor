@@ -227,8 +227,40 @@ Win10StoreNetwork::CookieData Win10StoreNetwork::fetchCookie() {
     return data;
 }
 
-void Win10StoreNetwork::syncVersion(CookieData const& cookie) {
+Win10StoreNetwork::SyncResult Win10StoreNetwork::syncVersion(CookieData const& cookie) {
     std::string request = buildSyncRequest(cookie);
     std::string ret;
     doHttpRequest(Win10StoreNetwork::PRIMARY_URL, request.c_str(), ret);
+    xml_document<> doc;
+    doc.parse<0>(&ret[0]);
+    auto& envelope = firstNodeOrThrow(doc, "s:Envelope");
+    auto& body = firstNodeOrThrow(envelope, "s:Body");
+    auto& resp = firstNodeOrThrow(body, "SyncUpdatesResponse");
+    auto& res = firstNodeOrThrow(resp, "SyncUpdatesResult");
+    auto& newUpdates = firstNodeOrThrow(res, "NewUpdates");
+    SyncResult data;
+    for (auto it = newUpdates.first_node("UpdateInfo"); it != nullptr; it = it->next_sibling("UpdateInfo")) {
+        UpdateInfo info;
+        info.serverId = firstNodeOrThrow(*it, "ID").value();
+        info.addXmlInfo(firstNodeOrThrow(*it, "Xml").value()); // NOTE: destroys the node
+        data.newUpdates.push_back(std::move(info));
+    }
+    return data;
+}
+
+void Win10StoreNetwork::UpdateInfo::addXmlInfo(char *val) {
+    printf("%s\n", val);
+    xml_document<> doc;
+    doc.parse<0>(val);
+    auto& identity = firstNodeOrThrow(doc, "UpdateIdentity");
+    auto attr = identity.first_attribute("UpdateID");
+    if (attr != nullptr)
+        updateId = attr->value();
+    auto applicability = doc.first_node("ApplicabilityRules");
+    auto metadata = applicability != nullptr ? applicability->first_node("Metadata") : nullptr;
+    auto metadataPkgAppx = metadata != nullptr ? metadata->first_node("AppxPackageMetadata") : nullptr;
+    auto metadataAppx = metadataPkgAppx != nullptr ? metadataPkgAppx->first_node("AppxMetadata") : nullptr;
+    attr = metadataAppx != nullptr ? metadataAppx->first_attribute("PackageMoniker") : nullptr;
+    if (attr != nullptr)
+        packageMoniker = attr->value();
 }

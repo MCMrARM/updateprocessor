@@ -3,6 +3,7 @@
 #include <string>
 #include <rapidxml.hpp>
 #include <stdexcept>
+#include <vector>
 
 class Win10StoreNetwork {
 
@@ -10,6 +11,16 @@ public:
     struct CookieData {
         std::string encryptedData;
         std::string expiration;
+    };
+    struct UpdateInfo {
+        std::string serverId;
+        std::string updateId;
+        std::string packageMoniker;
+
+        void addXmlInfo(char* val);
+    };
+    struct SyncResult {
+        std::vector<UpdateInfo> newUpdates;
     };
 
 private:
@@ -36,7 +47,7 @@ private:
     static size_t httpOnWrite(char *ptr, size_t size, size_t nmemb, void *userdata);
     static void doHttpRequest(const char* url, const char* data, std::string& ret);
 
-    static rapidxml::xml_node<>& firstNodeOrThrow(rapidxml::xml_node<>& parent, const char* name) {
+    static rapidxml::xml_node<>& firstNodeOrThrow(rapidxml::xml_node<>& parent, char* name) {
         auto ret = parent.first_node(name);
         if (ret == nullptr)
             throw std::runtime_error("Node not found");
@@ -46,6 +57,6 @@ private:
 public:
     static CookieData fetchCookie();
 
-    static void syncVersion(CookieData const& cookie);
+    static SyncResult syncVersion(CookieData const& cookie);
 
 };
