@@ -47,7 +47,7 @@ private:
     static size_t httpOnWrite(char *ptr, size_t size, size_t nmemb, void *userdata);
     static void doHttpRequest(const char* url, const char* data, std::string& ret);
 
-    static rapidxml::xml_node<>& firstNodeOrThrow(rapidxml::xml_node<>& parent, char* name) {
+    static rapidxml::xml_node<>& firstNodeOrThrow(rapidxml::xml_node<>& parent, const char* name) {
         auto ret = parent.first_node(name);
         if (ret == nullptr)
             throw std::runtime_error("Node not found");
