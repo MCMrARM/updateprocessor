@@ -56,17 +56,17 @@ void Win10StoreManager::checkVersion() {
             Win10StoreNetwork::UpdateInfo const& b) {
         return a.packageMoniker < b.packageMoniker;
     });
+    if (!res.newCookie.encryptedData.empty())
+        cookie = res.newCookie;
     dataLock.unlock();
     if (hasAnyNewVersions) {
-        {
-            std::lock_guard<std::mutex> lk(newVersionMutex);
-            for (NewVersionCallback const& cb : newVersionCallback)
-                cb(newUpdates);
-        }
-        dataLock.lock();
-        saveConfig();
-        dataLock.unlock();
+        std::lock_guard<std::mutex> lk(newVersionMutex);
+        for (NewVersionCallback const &cb : newVersionCallback)
+            cb(newUpdates);
     }
+    dataLock.lock();
+    saveConfig();
+    dataLock.unlock();
 }
 
 void Win10StoreManager::startChecking() {

@@ -245,6 +245,11 @@ Win10StoreNetwork::SyncResult Win10StoreNetwork::syncVersion(CookieData const& c
         info.addXmlInfo(firstNodeOrThrow(*it, "Xml").value()); // NOTE: destroys the node
         data.newUpdates.push_back(std::move(info));
     }
+    auto newCookie = res.first_node("NewCookie");
+    if (newCookie != nullptr) {
+        data.newCookie.encryptedData = firstNodeOrThrow(*newCookie, "EncryptedData").value();
+        data.newCookie.expiration = firstNodeOrThrow(*newCookie, "Expiration").value();
+    }
     return data;
 }
 

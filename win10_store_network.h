@@ -21,6 +21,7 @@ public:
     };
     struct SyncResult {
         std::vector<UpdateInfo> newUpdates;
+        CookieData newCookie;
     };
 
 private:
