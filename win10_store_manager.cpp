@@ -38,7 +38,13 @@ void Win10StoreManager::saveConfig() {
 
 void Win10StoreManager::checkVersion() {
     std::unique_lock<std::mutex> dataLock (dataMutex);
-    auto res = Win10StoreNetwork::syncVersion(cookie);
+    Win10StoreNetwork::SyncResult res;
+    try {
+        res = Win10StoreNetwork::syncVersion(cookie);
+    } catch (std::exception& e) {
+        printf("Win10 version check failed: %s\n", e.what());
+        return;
+    }
     bool hasAnyNewVersions = false;
     std::vector<Win10StoreNetwork::UpdateInfo> newUpdates;
     for (auto const& e : res.newUpdates) {
