@@ -33,7 +33,7 @@ public:
     void onNewVersion(int version, std::string const& versionString,
                       std::string const& changelog, std::string const& variant);
 
-    void onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const& u);
+    void onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const& u, bool isBeta);
 
     void loop();
 

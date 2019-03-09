@@ -70,7 +70,7 @@ std::string Win10StoreManager::getMsaToken() {
     return Base64::encode(tkdw);
 }
 
-void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::CookieData& cookie) {
+void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::CookieData& cookie, bool isBeta) {
     std::unique_lock<std::mutex> dataLock (dataMutex);
     Win10StoreNetwork::SyncResult res;
     try {
@@ -102,7 +102,7 @@ void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::
     if (hasAnyNewVersions) {
         std::lock_guard<std::mutex> lk(newVersionMutex);
         for (NewVersionCallback const &cb : newVersionCallback)
-            cb(newUpdates);
+            cb(newUpdates, isBeta);
     }
     dataLock.lock();
     saveConfig();
@@ -116,12 +116,12 @@ void Win10StoreManager::startChecking() {
 void Win10StoreManager::runVersionCheckThread() {
     std::unique_lock<std::mutex> lk(threadMutex);
     while (!stopped) {
-        checkVersion(wuAnonymous, cookieAnonymous);
+        checkVersion(wuAnonymous, cookieAnonymous, false);
         {
             std::lock_guard<std::mutex> dataLock (dataMutex);
             wuWithAccount.setAuthTokenBase64(getMsaToken());
         }
-        checkVersion(wuWithAccount, cookieWithAccount);
+        checkVersion(wuWithAccount, cookieWithAccount, true);
 
         auto until = std::chrono::system_clock::now() + std::chrono::minutes(10);
         stopCv.wait_until(lk, until);

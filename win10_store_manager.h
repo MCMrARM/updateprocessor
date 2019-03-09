@@ -15,7 +15,8 @@
 class Win10StoreManager {
 
 public:
-    using NewVersionCallback = std::function<void (std::vector<Win10StoreNetwork::UpdateInfo> const& update)>;
+    using NewVersionCallback = std::function<void (std::vector<Win10StoreNetwork::UpdateInfo> const& update,
+            bool isBeta)>;
 
 private:
     std::thread thread;
@@ -40,7 +41,7 @@ private:
 
     void runVersionCheckThread();
 
-    void checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::CookieData& cookie);
+    void checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::CookieData& cookie, bool isBeta);
 
     std::string getMsaToken();
 
