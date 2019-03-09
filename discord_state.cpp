@@ -165,7 +165,9 @@ void DiscordState::onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> 
     discord::CreateMessageParams params (isBeta ? "**New Windows 10 beta**" : "**New Windows 10 release**");
     std::string desc;
     params.embed["fields"] = nlohmann::json::array();
-    nlohmann::json jsonData = nlohmann::json::array();
+    nlohmann::json jsonData = nlohmann::json::object();
+    jsonData["isBeta"] = isBeta;
+    jsonData["updates"] = nlohmann::json::array();
     for (auto const& e : u) {
         desc += "**" + e.packageMoniker + "**\n" + e.updateId + "\n";
         nlohmann::json val;
@@ -176,9 +178,10 @@ void DiscordState::onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> 
         nlohmann::json valj;
         valj["packageMoniker"] = e.packageMoniker;
         valj["updateId"] = e.updateId;
+        valj["serverId"] = e.serverId;
         if (e.packageMoniker.find(".0_x64_") != std::string::npos)
             valj["downloadUrl"] = win10StoreManager->getDownloadUrl(e.updateId, 1);
-        jsonData.push_back(valj);
+        jsonData["updates"].push_back(valj);
     }
 //    params.embed["description"] = desc;
 
