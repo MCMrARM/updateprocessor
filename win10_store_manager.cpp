@@ -51,8 +51,11 @@ void Win10StoreManager::saveConfig() {
     std::vector<std::string> knownVersionsV;
     std::copy(knownVersions.begin(), knownVersions.end(), std::back_inserter(knownVersionsV));
     conf.set_array("known_versions", std::move(knownVersionsV));
-    std::ofstream ifs("priv/win10.conf");
-    conf.save(ifs);
+    {
+        std::ofstream ifs("priv/win10.conf.new");
+        conf.save(ifs);
+    }
+    rename("priv/win10.conf.new", "priv/win10.conf");
 }
 
 std::string Win10StoreManager::getMsaToken() {
