@@ -7,6 +7,9 @@
 #include <set>
 #include <thread>
 #include <condition_variable>
+#include <msa/simple_storage_manager.h>
+#include <msa/login_manager.h>
+#include <msa/account_manager.h>
 #include "win10_store_network.h"
 
 class Win10StoreManager {
@@ -19,10 +22,17 @@ private:
     std::mutex threadMutex, dataMutex;
     std::condition_variable stopCv;
     bool stopped = false;
-    Win10StoreNetwork::CookieData cookie;
     std::set<std::string> knownVersions;
     std::mutex newVersionMutex;
     std::vector<NewVersionCallback> newVersionCallback;
+    msa::SimpleStorageManager msaStorage;
+    msa::LoginManager msaLoginManager;
+    msa::AccountManager msaAccountManager;
+    std::shared_ptr<msa::Account> msaAccount;
+    Win10StoreNetwork wuAnonymous;
+    Win10StoreNetwork wuWithAccount;
+    Win10StoreNetwork::CookieData cookieAnonymous;
+    Win10StoreNetwork::CookieData cookieWithAccount;
 
     void loadConfig();
 
@@ -30,15 +40,22 @@ private:
 
     void runVersionCheckThread();
 
-    void checkVersion();
+    void checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::CookieData& cookie);
+
+    std::string getMsaToken();
 
 public:
+    Win10StoreManager() : msaStorage("priv/msa/"), msaLoginManager(&msaStorage), msaAccountManager(msaStorage) {}
+
+    void checkHasAccountAdded();
+
     ~Win10StoreManager() {
         threadMutex.lock();
         stopped = true;
         stopCv.notify_all();
         threadMutex.unlock();
-        thread.join();
+        if (thread.joinable())
+            thread.join();
     }
 
     void addNewVersionCallback(NewVersionCallback callback) {

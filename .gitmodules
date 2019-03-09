@@ -10,3 +10,12 @@
 [submodule "rapidxml"]
 	path = rapidxml
 	url = https://github.com/minecraft-linux/rapidxml.git
+[submodule "logger"]
+	path = logger
+	url = https://github.com/minecraft-linux/logger.git
+[submodule "base64"]
+	path = base64
+	url = https://github.com/minecraft-linux/base64.git
+[submodule "msa"]
+	path = msa
+	url = https://github.com/MCMrARM/updateprocessor-msa.git

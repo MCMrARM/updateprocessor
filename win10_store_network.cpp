@@ -47,6 +47,15 @@ void Win10StoreNetwork::buildCommonHeader(rapidxml::xml_document<> &doc, rapidxm
     ticketsToken->append_attribute(doc.allocate_attribute("xmlns:wsu", NAMESPACE_WSSECURITY_UTILITY));
     ticketsToken->append_attribute(doc.allocate_attribute("xmlns:wuws", NAMESPACE_WU_AUTHORIZATION));
 
+    if (userToken.size() > 0) {
+        auto msaToken = doc.allocate_node(node_element, "TicketType");
+        ticketsToken->append_node(msaToken);
+        msaToken->append_attribute(doc.allocate_attribute("Name", "MSA"));
+        msaToken->append_attribute(doc.allocate_attribute("Version", "1.0"));
+        msaToken->append_attribute(doc.allocate_attribute("Policy", "MBI_SSL"));
+        msaToken->append_node(doc.allocate_node(node_element, "User", userToken.c_str()));
+    }
+
     auto aadToken = doc.allocate_node(node_element, "TicketType");
     ticketsToken->append_node(aadToken);
     aadToken->append_attribute(doc.allocate_attribute("Name", "AAD"));

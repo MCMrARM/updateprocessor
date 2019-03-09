@@ -35,15 +35,17 @@ private:
 
     static const char* const PRIMARY_URL;
 
+    std::string userToken;
+
     static void formatTime(char* buf, size_t bufSize, time_t time);
 
     static void buildInstalledNonLeafUpdateIDs(rapidxml::xml_document<>& doc, rapidxml::xml_node<>& paramsNode);
 
-    static void buildCommonHeader(rapidxml::xml_document<>& doc, rapidxml::xml_node<>& headNode, const char* action);
+    void buildCommonHeader(rapidxml::xml_document<>& doc, rapidxml::xml_node<>& headNode, const char* action);
 
-    static std::string buildCookieRequest();
+    std::string buildCookieRequest();
 
-    static std::string buildSyncRequest(CookieData const& cookie);
+    std::string buildSyncRequest(CookieData const& cookie);
 
     static size_t httpOnWrite(char *ptr, size_t size, size_t nmemb, void *userdata);
     static void doHttpRequest(const char* url, const char* data, std::string& ret);
@@ -56,8 +58,12 @@ private:
     }
 
 public:
-    static CookieData fetchCookie();
+    void setAuthTokenBase64(std::string tk) {
+        userToken = std::move(tk);
+    }
 
-    static SyncResult syncVersion(CookieData const& cookie);
+    CookieData fetchCookie();
+
+    SyncResult syncVersion(CookieData const& cookie);
 
 };
