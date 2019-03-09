@@ -8,6 +8,12 @@
 class DiscordState {
 
 private:
+    struct JsonNotifyRule {
+        std::string channel;
+        bool notifyW10Release = false;
+        bool notifyW10Beta = false;
+    };
+
     playapi::config discordConf;
     PlayManager& playManager;
     ApkManager& apkManager;
@@ -15,6 +21,7 @@ private:
     std::vector<std::string> broadcastChannels;
     std::vector<std::string> broadcastChannelsW10;
     std::set<std::string> operatorList;
+    std::vector<JsonNotifyRule> jsonNotifyRules;
 
     bool checkOp(discord::Message const& m);
 

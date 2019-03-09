@@ -13,6 +13,24 @@ DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : p
     std::vector<std::string> ops = discordConf.get_array("ops", {});
     operatorList = std::set<std::string>(ops.begin(), ops.end());
 
+    for (auto const& s : discordConf.get_array("json_notify", {})) {
+        auto j = s.find(';');
+        if (j == std::string::npos)
+            continue;
+        JsonNotifyRule rule;
+        rule.channel = s.substr(0, j);
+        for (auto i = j + 1; i != std::string::npos; ) {
+            j = s.find(';', i);
+            auto text = j != std::string::npos ? s.substr(i, j - i) : s.substr(i);
+            if (text == "W10Release")
+                rule.notifyW10Release = true;
+            if (text == "W10Beta")
+                rule.notifyW10Beta = true;
+            i = j != std::string::npos ? (j + 1) : j;
+        }
+        jsonNotifyRules.push_back(std::move(rule));
+    }
+
     api.setBothAuth(discordConf.get("token"));
     conn.setToken(discordConf.get("token"));
     conn.setSessionId(discordConf.get("session_id"), discordConf.get_int("session_seq"));
@@ -147,16 +165,31 @@ void DiscordState::onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> 
     discord::CreateMessageParams params (isBeta ? "**New Windows 10 beta**" : "**New Windows 10 release**");
     std::string desc;
     params.embed["fields"] = nlohmann::json::array();
+    nlohmann::json jsonData = nlohmann::json::array();
     for (auto const& e : u) {
         desc += "**" + e.packageMoniker + "**\n" + e.updateId + "\n";
         nlohmann::json val;
         val["name"] = e.packageMoniker;
         val["value"] = e.updateId;
         params.embed["fields"].push_back(val);
+
+        nlohmann::json valj;
+        valj["packageMoniker"] = e.packageMoniker;
+        valj["updateId"] = e.updateId;
+        if (e.packageMoniker.find(".0_x64_") != std::string::npos)
+            valj["downloadUrl"] = win10StoreManager->getDownloadUrl(e.updateId, 1);
+        jsonData.push_back(valj);
     }
 //    params.embed["description"] = desc;
 
     for (std::string const& chan : broadcastChannelsW10) {
         api.createMessage(chan, params);
+    }
+
+    for (auto const& r : jsonNotifyRules) {
+        if (isBeta ? (!r.notifyW10Beta) : (!r.notifyW10Release))
+            continue;
+
+        api.createMessage(r.channel, "`" + jsonData.dump() + "`");
     }
 }
