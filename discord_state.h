@@ -11,6 +11,7 @@ private:
     playapi::config discordConf;
     PlayManager& playManager;
     ApkManager& apkManager;
+    Win10StoreManager* win10StoreManager = nullptr;
     std::vector<std::string> broadcastChannels;
     std::vector<std::string> broadcastChannelsW10;
     std::set<std::string> operatorList;

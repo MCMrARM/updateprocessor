@@ -160,6 +160,48 @@ std::string Win10StoreNetwork::buildSyncRequest(CookieData const& cookieData) {
     return ss.str();
 }
 
+std::string Win10StoreNetwork::buildDownloadLinkRequest(std::string const &updateId, int revisionNumber) {
+    xml_document<> doc;
+    auto envelope = doc.allocate_node(node_element, "s:Envelope");
+    doc.append_node(envelope);
+    envelope->append_attribute(doc.allocate_attribute("xmlns:a", NAMESPACE_ADDRESSING));
+    envelope->append_attribute(doc.allocate_attribute("xmlns:s", NAMESPACE_SOAP));
+
+    auto header = doc.allocate_node(node_element, "s:Header");
+    envelope->append_node(header);
+
+    buildCommonHeader(doc, *header, "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/GetExtendedUpdateInfo2");
+
+    auto body = doc.allocate_node(node_element, "s:Body");
+    envelope->append_node(body);
+
+    auto request = doc.allocate_node(node_element, "GetExtendedUpdateInfo2");
+    body->append_node(request);
+    request->append_attribute(doc.allocate_attribute("xmlns", "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService"));
+
+    auto updateIds = doc.allocate_node(node_element, "updateIDs");
+    request->append_node(updateIds);
+    auto updateIdNode = doc.allocate_node(node_element, "UpdateIdentity");
+    updateIds->append_node(updateIdNode);
+    updateIdNode->append_node(doc.allocate_node(node_element, "UpdateID", updateId.c_str()));
+    std::string revisionNumberStr = std::to_string(revisionNumber);
+    updateIdNode->append_node(doc.allocate_node(node_element, "RevisionNumber", revisionNumberStr.c_str()));
+
+    auto xmlUpdateFragmentTypes = doc.allocate_node(node_element, "infoTypes");
+    request->append_node(xmlUpdateFragmentTypes);
+    xmlUpdateFragmentTypes->append_node(doc.allocate_node(node_element, "XmlUpdateFragmentType", "FileUrl"));
+    xmlUpdateFragmentTypes->append_node(doc.allocate_node(node_element, "XmlUpdateFragmentType", "FileDecryption"));
+    xmlUpdateFragmentTypes->append_node(doc.allocate_node(node_element, "XmlUpdateFragmentType", "EsrpDecryptionInformation"));
+    xmlUpdateFragmentTypes->append_node(doc.allocate_node(node_element, "XmlUpdateFragmentType", "PiecesHashUrl"));
+    xmlUpdateFragmentTypes->append_node(doc.allocate_node(node_element, "XmlUpdateFragmentType", "BlockMapUrl"));
+
+    request->append_node(doc.allocate_node(node_element, "deviceAttributes", "E:BranchReadinessLevel=CBB&DchuNvidiaGrfxExists=1&ProcessorIdentifier=Intel64%20Family%206%20Model%2063%20Stepping%202&CurrentBranch=rs4_release&DataVer_RS5=1942&FlightRing=Retail&AttrDataVer=57&InstallLanguage=en-US&DchuAmdGrfxExists=1&OSUILocale=en-US&InstallationType=Client&FlightingBranchName=&Version_RS5=10&UpgEx_RS5=Green&GStatus_RS5=2&OSSkuId=48&App=WU&InstallDate=1529700913&ProcessorManufacturer=GenuineIntel&AppVer=10.0.17134.471&OSArchitecture=AMD64&UpdateManagementGroup=2&IsDeviceRetailDemo=0&HidOverGattReg=C%3A%5CWINDOWS%5CSystem32%5CDriverStore%5CFileRepository%5Chidbthle.inf_amd64_467f181075371c89%5CMicrosoft.Bluetooth.Profiles.HidOverGatt.dll&IsFlightingEnabled=0&DchuIntelGrfxExists=1&TelemetryLevel=1&DefaultUserRegion=244&DeferFeatureUpdatePeriodInDays=365&Bios=Unknown&WuClientVer=10.0.17134.471&PausedFeatureStatus=1&Steam=URL%3Asteam%20protocol&Free=8to16&OSVersion=10.0.17134.472&DeviceFamily=Windows.Desktop"));
+
+    std::stringstream ss;
+    rapidxml::print_to_stream(ss, doc);
+    return ss.str();
+}
+
 void Win10StoreNetwork::buildInstalledNonLeafUpdateIDs(rapidxml::xml_document<> &doc,
                                                        rapidxml::xml_node<> &paramsNode) {
     // Mostly random updates, took from my primary Windows installation + the detectoids for ARM
@@ -258,6 +300,27 @@ Win10StoreNetwork::SyncResult Win10StoreNetwork::syncVersion(CookieData const& c
     if (newCookie != nullptr) {
         data.newCookie.encryptedData = firstNodeOrThrow(*newCookie, "EncryptedData").value();
         data.newCookie.expiration = firstNodeOrThrow(*newCookie, "Expiration").value();
+    }
+    return data;
+}
+
+Win10StoreNetwork::DownloadLinkResult Win10StoreNetwork::getDownloadLink(
+        std::string const &updateId, int revisionNumber) {
+    std::string request = buildDownloadLinkRequest(updateId, revisionNumber);
+    std::string ret;
+    doHttpRequest(Win10StoreNetwork::PRIMARY_URL, request.c_str(), ret);
+    xml_document<> doc;
+    doc.parse<0>(&ret[0]);
+    auto& envelope = firstNodeOrThrow(doc, "s:Envelope");
+    auto& body = firstNodeOrThrow(envelope, "s:Body");
+    auto& resp = firstNodeOrThrow(body, "GetExtendedUpdateInfo2Response");
+    auto& res = firstNodeOrThrow(resp, "GetExtendedUpdateInfo2Result");
+    auto& fileLocations = firstNodeOrThrow(res, "FileLocations");
+    DownloadLinkResult data;
+    for (auto it = fileLocations.first_node("FileLocation"); it != nullptr; it = it->next_sibling("FileLocation")) {
+        FileLocation info;
+        info.url = firstNodeOrThrow(*it, "Url").value();
+        data.files.push_back(std::move(info));
     }
     return data;
 }

@@ -47,8 +47,6 @@ private:
 public:
     Win10StoreManager() : msaStorage("priv/msa/"), msaLoginManager(&msaStorage), msaAccountManager(msaStorage) {}
 
-    void checkHasAccountAdded();
-
     ~Win10StoreManager() {
         threadMutex.lock();
         stopped = true;
@@ -66,5 +64,7 @@ public:
     void init();
 
     void startChecking();
+
+    std::string getDownloadUrl(std::string const& updateId, int revisionNumber);
 
 };

@@ -23,6 +23,12 @@ public:
         std::vector<UpdateInfo> newUpdates;
         CookieData newCookie;
     };
+    struct FileLocation {
+        std::string url;
+    };
+    struct DownloadLinkResult {
+        std::vector<FileLocation> files;
+    };
 
 private:
     static const char* const NAMESPACE_SOAP;
@@ -47,6 +53,8 @@ private:
 
     std::string buildSyncRequest(CookieData const& cookie);
 
+    std::string buildDownloadLinkRequest(std::string const& updateId, int revisionNumber);
+
     static size_t httpOnWrite(char *ptr, size_t size, size_t nmemb, void *userdata);
     static void doHttpRequest(const char* url, const char* data, std::string& ret);
 
@@ -65,5 +73,7 @@ public:
     CookieData fetchCookie();
 
     SyncResult syncVersion(CookieData const& cookie);
+
+    DownloadLinkResult getDownloadLink(std::string const& updateId, int revisionNumber);
 
 };

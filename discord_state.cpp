@@ -33,6 +33,7 @@ DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : p
 void DiscordState::addWin10StoreMgr(Win10StoreManager &mgr) {
     using namespace std::placeholders;
     mgr.addNewVersionCallback(std::bind(&DiscordState::onNewWin10Version, this, _1));
+    win10StoreManager = &mgr;
 }
 
 void DiscordState::onMessage(discord::Message const& m) {
@@ -78,6 +79,17 @@ void DiscordState::onMessage(discord::Message const& m) {
                 api.createMessage(m.channel, "My IP is: " + ip);
             } catch (std::exception& e) {
                 api.createMessage(m.channel, "Error getting IP");
+            }
+        } else if (command == "!link" && checkOp(m) && win10StoreManager) {
+            if (it == std::string::npos || it + 1 >= m.content.size()) {
+                api.createMessage(m.channel, "Missing required argument");
+                return;
+            }
+            try {
+                auto url = win10StoreManager->getDownloadUrl(m.content.substr(it + 1), 1);
+                api.createMessage(m.channel, "Download URL: " + url);
+            } catch (std::exception& e) {
+                api.createMessage(m.channel, "Error getting URL");
             }
         }
     }

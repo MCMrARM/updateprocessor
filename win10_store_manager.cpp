@@ -127,3 +127,16 @@ void Win10StoreManager::runVersionCheckThread() {
         stopCv.wait_until(lk, until);
     }
 }
+
+std::string Win10StoreManager::getDownloadUrl(std::string const &updateId, int revisionNumber) {
+    std::lock_guard<std::mutex> dataLock (dataMutex);
+    wuWithAccount.setAuthTokenBase64(getMsaToken());
+    auto resp = wuWithAccount.getDownloadLink(updateId, revisionNumber);
+    for (auto const& file : resp.files) {
+        const char* baseUrl = "http://tlu.dl.delivery.mp.microsoft.com/";
+        if (strncmp(file.url.data(), baseUrl, strlen(baseUrl)) == 0) {
+            return file.url;
+        }
+    }
+    return std::string();
+}
