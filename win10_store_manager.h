@@ -24,6 +24,7 @@ private:
     std::condition_variable stopCv;
     bool stopped = false;
     std::set<std::string> knownVersions;
+    std::set<std::string> knownVersionsWithAccount;
     std::mutex newVersionMutex;
     std::vector<NewVersionCallback> newVersionCallback;
     msa::SimpleStorageManager msaStorage;
@@ -41,7 +42,8 @@ private:
 
     void runVersionCheckThread();
 
-    void checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::CookieData& cookie, bool isBeta);
+    void checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::CookieData& cookie,
+            std::set<std::string>& knownVersions, bool isBeta);
 
     std::string getMsaToken();
 

@@ -36,6 +36,8 @@ void Win10StoreManager::loadConfig() {
     cookieWithAccount.expiration = conf.get("cookie_with_account.expiration");
     for (std::string const& v : conf.get_array("known_versions"))
         knownVersions.insert(v);
+    for (std::string const& v : conf.get_array("known_versions_with_account"))
+        knownVersionsWithAccount.insert(v);
 }
 
 void Win10StoreManager::saveConfig() {
@@ -51,6 +53,9 @@ void Win10StoreManager::saveConfig() {
     std::vector<std::string> knownVersionsV;
     std::copy(knownVersions.begin(), knownVersions.end(), std::back_inserter(knownVersionsV));
     conf.set_array("known_versions", std::move(knownVersionsV));
+    knownVersionsV.clear();
+    std::copy(knownVersionsWithAccount.begin(), knownVersionsWithAccount.end(), std::back_inserter(knownVersionsV));
+    conf.set_array("known_versions_with_account", std::move(knownVersionsV));
     {
         std::ofstream ifs("priv/win10.conf.new");
         conf.save(ifs);
@@ -73,7 +78,8 @@ std::string Win10StoreManager::getMsaToken() {
     return Base64::encode(tkdw);
 }
 
-void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::CookieData& cookie, bool isBeta) {
+void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::CookieData& cookie,
+        std::set<std::string>& knownVersions, bool isBeta) {
     std::unique_lock<std::mutex> dataLock (dataMutex);
     Win10StoreNetwork::SyncResult res;
     try {
@@ -119,12 +125,12 @@ void Win10StoreManager::startChecking() {
 void Win10StoreManager::runVersionCheckThread() {
     std::unique_lock<std::mutex> lk(threadMutex);
     while (!stopped) {
-        checkVersion(wuAnonymous, cookieAnonymous, false);
+        checkVersion(wuAnonymous, cookieAnonymous, knownVersions, false);
         {
             std::lock_guard<std::mutex> dataLock (dataMutex);
             wuWithAccount.setAuthTokenBase64(getMsaToken());
         }
-        checkVersion(wuWithAccount, cookieWithAccount, true);
+        checkVersion(wuWithAccount, cookieWithAccount, knownVersionsWithAccount, true);
 
         auto until = std::chrono::system_clock::now() + std::chrono::minutes(10);
         stopCv.wait_until(lk, until);
