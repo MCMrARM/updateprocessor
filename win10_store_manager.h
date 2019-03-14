@@ -45,8 +45,6 @@ private:
     void checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::CookieData& cookie,
             std::set<std::string>& knownVersions, bool isBeta);
 
-    std::string getMsaToken();
-
 public:
     Win10StoreManager() : msaStorage("priv/msa/"), msaLoginManager(&msaStorage), msaAccountManager(msaStorage) {}
 
@@ -67,6 +65,8 @@ public:
     void init();
 
     void startChecking();
+
+    std::string getMsaToken();
 
     std::string getDownloadUrl(std::string const& updateId, int revisionNumber);
 
