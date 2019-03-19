@@ -128,7 +128,12 @@ void Win10StoreManager::runVersionCheckThread() {
         checkVersion(wuAnonymous, cookieAnonymous, knownVersions, false);
         {
             std::lock_guard<std::mutex> dataLock (dataMutex);
-            wuWithAccount.setAuthTokenBase64(getMsaToken());
+            try {
+                wuWithAccount.setAuthTokenBase64(getMsaToken());
+            } catch (std::exception& e) {
+                printf("Win10 token refresh failed: %s\n", e.what());
+                continue;
+            }
         }
         checkVersion(wuWithAccount, cookieWithAccount, knownVersionsWithAccount, true);
 
