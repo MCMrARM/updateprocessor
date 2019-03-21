@@ -38,6 +38,7 @@ struct Win10VersionTextDb {
     struct VersionInfo {
         std::string uuid;
         std::string fileName;
+        std::string serverId;
     };
     std::vector<VersionInfo> releaseList, betaList;
 

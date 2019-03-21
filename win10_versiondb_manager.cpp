@@ -31,11 +31,6 @@ Win10VersionDBManager::Win10VersionDBManager() {
         if (git_repository_init(repo, dir.c_str(), 0) != 0)
             throw GitError("git_repository_init");
     }
-
-
-    Win10VersionTextDb textDb;
-    textDb.read(dir + "versions.txt");
-    textDb.writeJson(dir + "versions.json.min");
 }
 
 void Win10VersionDBManager::commitDb(std::string const& commitName) {
@@ -95,7 +90,7 @@ void Win10VersionDBManager::onNewWin10Version(std::vector<Win10StoreNetwork::Upd
     textDb.read(dir + "versions.txt");
     auto& textList = isBeta ? textDb.betaList : textDb.releaseList;
     for (auto const& v : u)
-        textList.push_back({v.updateId, v.packageMoniker});
+        textList.push_back({v.updateId, v.packageMoniker, v.serverId});
     textDb.write(dir + "versions.txt");
     textDb.writeJson(dir + "versions.json.min");
     std::stringstream commitName;
@@ -117,7 +112,10 @@ void Win10VersionTextDb::read(std::string const &filePath) {
         auto iof = line.find(' ');
         if (iof == std::string::npos)
             continue;
-        VersionInfo vi = {line.substr(0, iof), line.substr(iof + 1)};
+        auto iof2 = line.find(' ', iof + 1);
+        VersionInfo vi = {line.substr(0, iof), line.substr(iof + 1, iof2 != std::string::npos ? iof2 - iof - 1 : iof2)};
+        if (iof2 != std::string::npos)
+            vi.serverId = line.substr(iof2 + 1);
         (isBeta ? betaList : releaseList).push_back(std::move(vi));
     }
 }
@@ -126,11 +124,11 @@ void Win10VersionTextDb::write(std::string const &filePath) {
     std::ofstream ofs(filePath);
     ofs << "Releases\n";
     for (auto const& v : releaseList)
-        ofs << v.uuid << " " << v.fileName << "\n";
+        ofs << v.uuid << " " << v.fileName << (v.serverId.empty() ? "" : " ") << v.serverId << "\n";
     ofs << "\n";
     ofs << "Beta\n";
     for (auto const& v : betaList)
-        ofs << v.uuid << " " << v.fileName << "\n";
+        ofs << v.uuid << " " << v.fileName << (v.serverId.empty() ? "" : " ") << v.serverId << "\n";
     ofs << "\n";
 }
 
