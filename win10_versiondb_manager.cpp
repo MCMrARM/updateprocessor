@@ -31,6 +31,11 @@ Win10VersionDBManager::Win10VersionDBManager() {
         if (git_repository_init(repo, dir.c_str(), 0) != 0)
             throw GitError("git_repository_init");
     }
+
+
+    Win10VersionTextDb textDb;
+    textDb.read(dir + "versions.txt");
+    textDb.writeJson(dir + "versions.json.min");
 }
 
 void Win10VersionDBManager::commitDb(std::string const& commitName) {
@@ -84,6 +89,8 @@ void Win10VersionDBManager::addWin10StoreMgr(Win10StoreManager &mgr) {
 }
 
 void Win10VersionDBManager::onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const &u, bool isBeta) {
+    if (u.empty())
+        return;
     Win10VersionTextDb textDb;
     textDb.read(dir + "versions.txt");
     auto& textList = isBeta ? textDb.betaList : textDb.releaseList;
@@ -91,6 +98,13 @@ void Win10VersionDBManager::onNewWin10Version(std::vector<Win10StoreNetwork::Upd
         textList.push_back({v.updateId, v.packageMoniker});
     textDb.write(dir + "versions.txt");
     textDb.writeJson(dir + "versions.json.min");
+    std::stringstream commitName;
+    commitName << "Minecraft ";
+    auto ver = Win10VersionTextDb::convertVersion(u[0].packageMoniker);
+    commitName << ver.major << "." << ver.minor << "." << ver.patch << "." << ver.revision;
+    if (isBeta)
+        commitName << " (Beta)";
+    commitDb(commitName.str());
 }
 
 void Win10VersionTextDb::read(std::string const &filePath) {
