@@ -31,12 +31,6 @@ Win10VersionDBManager::Win10VersionDBManager() {
         if (git_repository_init(repo, dir.c_str(), 0) != 0)
             throw GitError("git_repository_init");
     }
-    Win10VersionTextDb textDb;
-    textDb.read(dir + "versions.txt");
-    textDb.write(dir + "versions.txt");
-    textDb.writeJson(dir + "versions.json.min");
-
-    commitDb("Add some newer releases to versions.txt");
 }
 
 void Win10VersionDBManager::commitDb(std::string const& commitName) {
@@ -69,6 +63,21 @@ void Win10VersionDBManager::commitDb(std::string const& commitName) {
         throw GitError("git_signature_new");
     if (git_commit_create_v(&obj, repo, "HEAD", sig, sig, nullptr, commitName.c_str(), builtTree, 1, parent.ptr))
         throw GitError("git_commit_create_v");
+}
+
+void Win10VersionDBManager::pushDb() {
+    GitRemote  remote;
+    if (git_remote_lookup(remote, repo, "origin"))
+        throw GitError("git_remote_lookup");
+    git_remote_callbacks cbs = GIT_REMOTE_CALLBACKS_INIT;
+    cbs.credentials = createCredentials;
+    cbs.payload = this;
+    if (git_remote_connect(remote, GIT_DIRECTION_PUSH, &cbs, nullptr, nullptr))
+        throw GitError("git_remote_connect");
+    git_push_options pushOpt = GIT_PUSH_OPTIONS_INIT;
+    pushOpt.callbacks = cbs;
+    if (git_remote_push(remote, nullptr, &pushOpt))
+        throw GitError("git_remote_push");
 }
 
 int Win10VersionDBManager::createCredentials(git_cred **cred, const char *url, const char *username_from_url,
@@ -106,6 +115,7 @@ void Win10VersionDBManager::onNewWin10Version(std::vector<Win10StoreNetwork::Upd
     if (isBeta)
         commitName << " (Beta)";
     commitDb(commitName.str());
+    pushDb();
 }
 
 void Win10VersionTextDb::read(std::string const &filePath) {

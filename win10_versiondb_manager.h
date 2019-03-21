@@ -29,6 +29,7 @@ using GitSignature = GitPtr<git_signature, git_signature_free>;
 using GitCommit = GitPtr<git_commit, git_commit_free>;
 using GitTree = GitPtr<git_tree, git_tree_free>;
 using GitTreeBuilder = GitPtr<git_treebuilder, git_treebuilder_free>;
+using GitRemote = GitPtr<git_remote, git_remote_free>;
 
 
 struct Win10VersionTextDb {
@@ -71,6 +72,8 @@ private:
             unsigned int allowed_types, void *payload);
 
     void commitDb(std::string const& commitName);
+
+    void pushDb();
 
 public:
     Win10VersionDBManager();
