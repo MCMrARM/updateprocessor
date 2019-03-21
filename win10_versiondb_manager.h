@@ -34,6 +34,10 @@ using GitTreeBuilder = GitPtr<git_treebuilder, git_treebuilder_free>;
 struct Win10VersionTextDb {
     struct Version {
         int major, minor, patch, revision;
+
+        friend bool operator<(Version const& a, Version const& b) {
+            return std::tie(a.major, a.minor, a.patch, a.revision) < std::tie(b.major, b.minor, b.patch, b.revision);
+        }
     };
     struct VersionInfo {
         std::string uuid;

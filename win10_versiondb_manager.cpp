@@ -31,6 +31,12 @@ Win10VersionDBManager::Win10VersionDBManager() {
         if (git_repository_init(repo, dir.c_str(), 0) != 0)
             throw GitError("git_repository_init");
     }
+    Win10VersionTextDb textDb;
+    textDb.read(dir + "versions.txt");
+    textDb.write(dir + "versions.txt");
+    textDb.writeJson(dir + "versions.json.min");
+
+    commitDb("Add some newer releases to versions.txt");
 }
 
 void Win10VersionDBManager::commitDb(std::string const& commitName) {
@@ -140,21 +146,20 @@ void Win10VersionTextDb::writeJson(std::string const &filePath) {
         bool isBeta;
     };
     std::vector<Element> elements;
-    std::set<std::string> addedVersions;
+    std::set<Version> addedVersions;
     auto addVersions = [&elements, &addedVersions](std::vector<VersionInfo> const& list, bool isBeta) {
         for (auto const& v : list) {
-            if (v.fileName.find(".0_x64") != std::string::npos && addedVersions.count(v.fileName) == 0) {
-                elements.push_back({convertVersion(v.fileName), v.uuid, isBeta});
-                addedVersions.insert(v.fileName);
+            auto cvVersion = convertVersion(v.fileName);
+            if (v.fileName.find(".0_x64") != std::string::npos && addedVersions.count(cvVersion) == 0) {
+                elements.push_back({cvVersion, v.uuid, isBeta});
+                addedVersions.insert(cvVersion);
             }
         }
     };
     addVersions(releaseList, false);
     addVersions(betaList, true);
     std::sort(elements.begin(), elements.end(), [](Element const& a, Element const& b) {
-        using helper_tuple = std::tuple<int, int, int, int>;
-        return helper_tuple(a.version.major, a.version.minor, a.version.patch, a.version.revision) <
-                helper_tuple(b.version.major, b.version.minor, b.version.patch, b.version.revision);
+        return a.version < b.version;
     });
     for (auto const& el : elements) {
         std::stringstream ver;
