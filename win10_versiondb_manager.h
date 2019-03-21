@@ -30,6 +30,26 @@ using GitCommit = GitPtr<git_commit, git_commit_free>;
 using GitTree = GitPtr<git_tree, git_tree_free>;
 using GitTreeBuilder = GitPtr<git_treebuilder, git_treebuilder_free>;
 
+
+struct Win10VersionTextDb {
+    struct Version {
+        int major, minor, patch, revision;
+    };
+    struct VersionInfo {
+        std::string uuid;
+        std::string fileName;
+    };
+    std::vector<VersionInfo> releaseList, betaList;
+
+    static Version convertVersion(std::string const& ver);
+
+    void read(std::string const& filePath);
+
+    void write(std::string const& filePath);
+
+    void writeJson(std::string const& filePath);
+};
+
 class Win10VersionDBManager {
 
 private:
@@ -49,5 +69,9 @@ private:
 
 public:
     Win10VersionDBManager();
+
+    void addWin10StoreMgr(Win10StoreManager& mgr);
+
+    void onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const& u, bool isBeta);
 
 };
