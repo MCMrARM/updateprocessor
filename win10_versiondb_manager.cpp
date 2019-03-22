@@ -76,7 +76,9 @@ void Win10VersionDBManager::pushDb() {
         throw GitError("git_remote_connect");
     git_push_options pushOpt = GIT_PUSH_OPTIONS_INIT;
     pushOpt.callbacks = cbs;
-    if (git_remote_push(remote, nullptr, &pushOpt))
+    const char* refs_text[] = { "refs/heads/master:refs/heads/master" };
+    git_strarray refs = {(char**) refs_text, 1};
+    if (git_remote_push(remote, &refs, &pushOpt))
         throw GitError("git_remote_push");
 }
 
