@@ -31,6 +31,11 @@ Win10VersionDBManager::Win10VersionDBManager() {
         if (git_repository_init(repo, dir.c_str(), 0) != 0)
             throw GitError("git_repository_init");
     }
+
+    Win10VersionTextDb textDb;
+    textDb.read(dir + "versions.txt");
+    textDb.write(dir + "versions.txt");
+    textDb.writeJson(dir + "versions.json.min");
 }
 
 void Win10VersionDBManager::commitDb(std::string const& commitName) {
