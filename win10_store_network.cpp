@@ -63,6 +63,32 @@ void Win10StoreNetwork::buildCommonHeader(rapidxml::xml_document<> &doc, rapidxm
     aadToken->append_attribute(doc.allocate_attribute("Policy", "MBI_SSL"));
 }
 
+std::string Win10StoreNetwork::buildGetConfigRequest() {
+    xml_document<> doc;
+    auto envelope = doc.allocate_node(node_element, "s:Envelope");
+    doc.append_node(envelope);
+    envelope->append_attribute(doc.allocate_attribute("xmlns:a", NAMESPACE_ADDRESSING));
+    envelope->append_attribute(doc.allocate_attribute("xmlns:s", NAMESPACE_SOAP));
+
+    auto header = doc.allocate_node(node_element, "s:Header");
+    envelope->append_node(header);
+
+    buildCommonHeader(doc, *header, "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/GetConfig");
+
+    auto body = doc.allocate_node(node_element, "s:Body");
+    envelope->append_node(body);
+
+    auto request = doc.allocate_node(node_element, "GetConfig");
+    body->append_node(request);
+    request->append_attribute(doc.allocate_attribute("xmlns", "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService"));
+
+    request->append_node(doc.allocate_node(node_element, "protocolVersion", "1.81"));
+
+    std::stringstream ss;
+    rapidxml::print_to_stream(ss, doc);
+    return ss.str();
+}
+
 std::string Win10StoreNetwork::buildCookieRequest() {
     xml_document<> doc;
     auto envelope = doc.allocate_node(node_element, "s:Envelope");
@@ -82,7 +108,7 @@ std::string Win10StoreNetwork::buildCookieRequest() {
     body->append_node(request);
     request->append_attribute(doc.allocate_attribute("xmlns", "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService"));
 
-    request->append_node(doc.allocate_node(node_element, "lastChange", "2018-06-26T21:31:32.8018693Z"));
+    request->append_node(doc.allocate_node(node_element, "lastChange", "2019-11-14T00:00:00.0000000Z"));
     char timeBuf[512];
     formatTime(timeBuf, sizeof(timeBuf), std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
     request->append_node(doc.allocate_node(node_element, "currentTime", doc.allocate_string(timeBuf)));
@@ -259,6 +285,14 @@ void Win10StoreNetwork::doHttpRequest(const char *url, const char *data, std::st
 
     if (res != CURLE_OK)
         throw std::runtime_error("doHttpRequest: res not ok");
+}
+
+void Win10StoreNetwork::dumpConfig() {
+    std::string request = buildGetConfigRequest();
+    std::string ret;
+    doHttpRequest(Win10StoreNetwork::PRIMARY_URL, request.c_str(), ret);
+    xml_document<> doc;
+    doc.parse<0>(&ret[0]);
 }
 
 Win10StoreNetwork::CookieData Win10StoreNetwork::fetchCookie() {

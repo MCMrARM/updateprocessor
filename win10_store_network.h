@@ -49,6 +49,8 @@ private:
 
     void buildCommonHeader(rapidxml::xml_document<>& doc, rapidxml::xml_node<>& headNode, const char* action);
 
+    std::string buildGetConfigRequest();
+
     std::string buildCookieRequest();
 
     std::string buildSyncRequest(CookieData const& cookie);
@@ -69,6 +71,8 @@ public:
     void setAuthTokenBase64(std::string tk) {
         userToken = std::move(tk);
     }
+
+    void dumpConfig();
 
     CookieData fetchCookie();
 
