@@ -115,7 +115,19 @@ static void do_zlib_inflate(z_stream& zs, FILE* file, char* data, size_t len, in
 void PlayDevice::downloadApk(std::string const& packageName, int packageVersion, std::string const& downloadTo) {
     auto resp = api.delivery(packageName, packageVersion, std::string());
     auto dd = resp.payload().deliveryresponse().appdeliverydata();
-    playapi::http_request req(dd.has_gzippeddownloadurl() ? dd.gzippeddownloadurl() : dd.downloadurl());
+
+    bool downloadUrlGzipped = dd.has_gzippeddownloadurl();
+    std::string downloadUrl = downloadUrlGzipped ? dd.gzippeddownloadurl() : dd.downloadurl();
+
+    for (auto const &d : dd.splitdeliverydata()) {
+        if (d.id() == "config.armeabi_v7a" || d.id() == "config.x86") {
+            downloadUrlGzipped = d.has_gzippeddownloadurl();
+            downloadUrl = downloadUrlGzipped ? d.gzippeddownloadurl() : d.downloadurl();
+        }
+    }
+    printf("downloading (gzipped: %i): %s\n", downloadUrlGzipped, downloadUrl.c_str());
+
+    playapi::http_request req(downloadUrl);
     if (dd.has_gzippeddownloadurl())
         req.set_encoding("gzip,deflate");
     req.set_encoding("gzip,deflate");
@@ -135,7 +147,7 @@ void PlayDevice::downloadApk(std::string const& packageName, int packageVersion,
     int ret = inflateInit2(&zs, 31);
     assert(ret == Z_OK);
 
-    if (dd.has_gzippeddownloadurl()) {
+    if (downloadUrlGzipped) {
         req.set_custom_output_func([file, &zs](char* data, size_t size) {
             do_zlib_inflate(zs, file, data, size, Z_NO_FLUSH);
             return size;
