@@ -97,9 +97,9 @@ bool ApkUploader::checkIsOnline() {
             });
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ss);
     auto res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
     if (res != CURLE_OK)
         return false;
-    curl_easy_cleanup(curl);
     return ss.str() == "ok";
 }
 
