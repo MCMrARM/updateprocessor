@@ -10,6 +10,7 @@ nlohmann::json discord::Api::sendRequest(playapi::http_method method, std::strin
     req.set_body(body);
     if (!authHeader.empty())
         req.add_header("Authorization", authHeader);
+    req.add_header("Content-Type", "application/json");
     auto resp = req.perform();
     if (!resp)
         throw std::runtime_error("Failed to perform http request");
