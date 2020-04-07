@@ -54,4 +54,11 @@ public:
 
     void downloadApk(std::string const& packageName, int packageVersion, std::string const& downloadTo);
 
+    struct DownloadLink {
+        std::string name;
+        std::string url;
+    };
+
+    std::vector<DownloadLink> getDownloadLinks(std::string const& packageName, int packageVersion);
+
 };

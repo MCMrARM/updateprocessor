@@ -109,6 +109,55 @@ void DiscordState::onMessage(discord::Message const& m) {
             } catch (std::exception& e) {
                 api.createMessage(m.channel, "Error getting URL");
             }
+        } else if ((command == "!dl_arm" || command == "!dl_x86") && checkOp(m)) {
+            if (it == std::string::npos || it + 1 >= m.content.size()) {
+                api.createMessage(m.channel, "Missing required argument");
+                return;
+            }
+            try {
+                int version = std::atoi(m.content.substr(it + 1).c_str());
+                auto &dev = command == "!dl_x86" ? playManager.getBetaDeviceX86() : playManager.getBetaDeviceARM();
+                auto links = dev.getDownloadLinks("com.mojang.minecraftpe", version);
+
+                discord::CreateMessageParams params ("Here's your download:");
+                params.embed["title"] = "Minecraft download";
+                int i = 0;
+                for (auto const &p : links) {
+                    params.embed["fields"][i]["name"] = p.name;
+                    params.embed["fields"][i]["value"] = "[Download](" + p.url + ")";
+                    ++i;
+                }
+                params.embed["footer"]["text"] = std::string("Version: ") + std::to_string(version);
+                api.createMessage(m.channel, params);
+            } catch (std::exception& e) {
+                api.createMessage(m.channel, "Error getting version info");
+            }
+        } else if ((command == "!all_em_apks") && checkOp(m)) {
+            try {
+                int version = std::atoi(m.content.substr(it + 1).c_str());
+                version += (1 - ((version / 1000000) % 10)) * 1000000;
+                auto links = playManager.getBetaDeviceARM().getDownloadLinks("com.mojang.minecraftpe", version);
+                auto links2 = playManager.getBetaDeviceX86().getDownloadLinks("com.mojang.minecraftpe", version + 1000000);
+                auto links3 = playManager.getBetaDeviceARM().getDownloadLinks("com.mojang.minecraftpe", version + 2000000);
+                auto links4 = playManager.getBetaDeviceX86().getDownloadLinks("com.mojang.minecraftpe", version + 3000000);
+                links.insert(links.end(), links2.begin(), links2.end());
+                links.insert(links.end(), links3.begin(), links3.end());
+                links.insert(links.end(), links4.begin(), links4.end());
+
+                discord::CreateMessageParams params ("Here's your links:");
+                params.embed["title"] = "Minecraft download";
+                int i = 0;
+                for (auto const &p : links) {
+                    if (p.name != "config.x86_64" && p.name != "config.x86" && p.name != "config.armeabi_v7a" && p.name != "config.arm64_v8a")
+                        continue;
+                    params.embed["fields"][i]["name"] = p.name;
+                    params.embed["fields"][i]["value"] = p.url;
+                    ++i;
+                }
+                api.createMessage(m.channel, params);
+            } catch (std::exception& e) {
+                api.createMessage(m.channel, "Error getting version info");
+            }
         }
     }
 }

@@ -174,3 +174,17 @@ void PlayDevice::downloadApk(std::string const& packageName, int packageVersion,
 
     fclose(file);
 }
+
+std::vector<PlayDevice::DownloadLink> PlayDevice::getDownloadLinks(std::string const &packageName, int packageVersion) {
+    auto resp = api.delivery(packageName, packageVersion, std::string());
+    auto dd = resp.payload().deliveryresponse().appdeliverydata();
+
+    std::vector<PlayDevice::DownloadLink> links;
+
+    links.push_back({"main", dd.downloadurl()});
+
+    for (auto const &d : dd.splitdeliverydata())
+        links.push_back({d.id(), d.downloadurl()});
+
+    return links;
+}
