@@ -4,6 +4,7 @@ import zipfile
 import tarfile
 import shutil
 import subprocess
+import re
 from config import config
 from archive import archive_file
 
@@ -38,8 +39,9 @@ def handle_add_apk_job(job_uuid, job_desc, job_dir, job_logger):
     assert version_code == job_desc["versionCode"]
 
     job_logger.info("Archiving APK archive set")
+    archive_base_name = os.path.join(re.match("\d+\.\d+", version_name).group(0) + "x", version_name)
     for (name, path) in apks:
-        archive_file(name + ".apk", path, "apk")
+        archive_file(os.path.join(archive_base_name, name + "_" + str(version_code) + ".apk"), path, "apk")
 
     job_logger.info("Executing IDA for all required files")
     for (apk_name, apk_path) in apks:
@@ -47,7 +49,8 @@ def handle_add_apk_job(job_uuid, job_desc, job_dir, job_logger):
             for name in z.namelist():
                 if name.startswith("lib/") and name.endswith("/libminecraftpe.so"):
                     arch_name = name[4:-len("/libminecraftpe.so")]
-                    extract_path = os.path.join(job_dir, "libminecraftpe_" + arch_name + ".so")
+                    so_filename = "libminecraftpe_" + str(version_code) + "_" + arch_name
+                    extract_path = os.path.join(job_dir, so_filename + ".so")
                     job_logger.info("Extracting native library: {extract_path} from {apk_name}:{name}")
                     with z.open(name) as src, open(extract_path, "wb") as dest:
                         shutil.copyfileobj(src, dest)
@@ -56,11 +59,11 @@ def handle_add_apk_job(job_uuid, job_desc, job_dir, job_logger):
                     job_logger.info("Deleting the extracted file")
                     os.remove(extract_path)
                     job_logger.info("Compressing IDB")
-                    idb_c_path = os.path.join(job_dir, "libminecraftpe_" + arch_name + ".idb.tar.xz")
+                    idb_c_path = os.path.join(job_dir, so_filename + ".idb.tar.xz")
                     with tarfile.open(idb_c_path, "w:xz") as tar:
-                        tar.add(idb_path, arcname="libminecraftpe_" + arch_name + ".idb")
+                        tar.add(idb_path, arcname=so_filename + ".idb")
                     job_logger.info("Archiving IDB")
-                    archive_file(idb_c_path, idb_c_path, "idb")
+                    archive_file(os.path.join(archive_base_name, so_filename + ".idb.tar.xz"), idb_c_path, "idb")
                     job_logger.info("Deleting the IDB")
                     os.remove(idb_c_path)
 
