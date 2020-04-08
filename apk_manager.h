@@ -6,7 +6,7 @@
 #include <vector>
 #include <condition_variable>
 #include "play_manager.h"
-#include "apk_uploader.h"
+#include "job_manager.h"
 
 struct ApkVersionInfo {
     int versionCode = -1;
@@ -33,7 +33,7 @@ private:
     bool stopped = false;
 
     PlayManager& playManager;
-    ApkUploader uploader;
+    JobManager&jobManager;
     std::vector<NewVersionCallback> newVersionCallback;
     playapi::config versionCheckConfig;
     ApkVersionInfo releaseARMVersionInfo, releaseX86VersionInfo;
@@ -59,14 +59,15 @@ private:
 
 public:
 
-    ApkManager(PlayManager& playManager);
+    ApkManager(PlayManager& playManager, JobManager& jobManager);
 
     ~ApkManager() {
         thread_mutex.lock();
         stopped = true;
         stop_cv.notify_all();
         thread_mutex.unlock();
-        thread.join();
+        if (thread.joinable())
+            thread.join();
     }
 
     void startChecking();
@@ -97,7 +98,7 @@ public:
         return lastVersionUpdate;
     }
 
-    void downloadAndProcessApk(PlayDevice& device, int version);
+    void downloadAndProcessApk(PlayDevice& device, int version, bool onlyNatives = false);
 
     void requestForceCheck();
 

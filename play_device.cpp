@@ -112,28 +112,17 @@ static void do_zlib_inflate(z_stream& zs, FILE* file, char* data, size_t len, in
     }
 }
 
-void PlayDevice::downloadApk(std::string const& packageName, int packageVersion, std::string const& downloadTo) {
-    auto resp = api.delivery(packageName, packageVersion, std::string());
-    auto dd = resp.payload().deliveryresponse().appdeliverydata();
+void PlayDevice::downloadApk(DownloadLink const &link, std::string const &downloadTo) {
+    bool downloadUrlGzipped = !link.gzippedUrl.empty();
+    std::string downloadUrl = downloadUrlGzipped ? link.gzippedUrl : link.url;
 
-    bool downloadUrlGzipped = dd.has_gzippeddownloadurl();
-    std::string downloadUrl = downloadUrlGzipped ? dd.gzippeddownloadurl() : dd.downloadurl();
-
-    for (auto const &d : dd.splitdeliverydata()) {
-        if (d.id() == "config.armeabi_v7a" || d.id() == "config.x86") {
-            downloadUrlGzipped = d.has_gzippeddownloadurl();
-            downloadUrl = downloadUrlGzipped ? d.gzippeddownloadurl() : d.downloadurl();
-        }
-    }
     printf("downloading (gzipped: %i): %s\n", downloadUrlGzipped, downloadUrl.c_str());
 
     playapi::http_request req(downloadUrl);
-    if (dd.has_gzippeddownloadurl())
+    if (downloadUrlGzipped)
         req.set_encoding("gzip,deflate");
     req.set_encoding("gzip,deflate");
     req.add_header("Accept-Encoding", "identity");
-    auto cookie = dd.downloadauthcookie(0);
-    req.add_header("Cookie", cookie.name() + "=" + cookie.value());
     req.set_user_agent("AndroidDownloadManager/" + device.build_version_string + " (Linux; U; Android " +
                        device.build_version_string + "; " + device.build_model + " Build/" + device.build_id + ")");
     req.set_follow_location(true);
@@ -181,10 +170,10 @@ std::vector<PlayDevice::DownloadLink> PlayDevice::getDownloadLinks(std::string c
 
     std::vector<PlayDevice::DownloadLink> links;
 
-    links.push_back({"main", dd.downloadurl()});
+    links.push_back({"main", dd.downloadurl(), dd.gzippeddownloadurl()});
 
     for (auto const &d : dd.splitdeliverydata())
-        links.push_back({d.id(), d.downloadurl()});
+        links.push_back({d.id(), d.downloadurl(), d.gzippeddownloadurl()});
 
     return links;
 }

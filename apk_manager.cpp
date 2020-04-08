@@ -5,7 +5,8 @@
 
 const char* ApkManager::PKG_NAME = "com.mojang.minecraftpe";
 
-ApkManager::ApkManager(PlayManager& playManager) : playManager(playManager) {
+ApkManager::ApkManager(PlayManager& playManager, JobManager& jobManager) :
+        playManager(playManager), jobManager(jobManager) {
     std::ifstream ifs ("priv/versioninfo.conf");
     versionCheckConfig.load(ifs);
     releaseARMVersionInfo.loadFromConfig(versionCheckConfig, "release.arm.");
@@ -151,9 +152,23 @@ void ApkManager::downloadAndProcessApk(PlayDevice& device, int version, ApkVersi
     }
 }
 
-void ApkManager::downloadAndProcessApk(PlayDevice& device, int version) {
-    std::string outp = "priv/apks/com.mojang.minecraftpe " + std::to_string(version) + ".apk";
-    FileUtils::mkdirs(FileUtils::getParent(outp));
-    device.downloadApk("com.mojang.minecraftpe", version, outp);
-    uploader.addFile(outp);
+void ApkManager::downloadAndProcessApk(PlayDevice& device, int version, bool onlyNatives) {
+    auto links = device.getDownloadLinks("com.mojang.minecraftpe", version);
+    if (onlyNatives) {
+        std::vector<PlayDevice::DownloadLink> linksCopy;
+        std::copy_if(links.begin(), links.end(), std::back_inserter(linksCopy), [](PlayDevice::DownloadLink const &l) {
+            return l.name == "config.x86" || l.name == "config.x86_64" || l.name == "config.armeabi_v7a" || l.name == "config.arm64_v8a";
+        });
+    }
+    if (links.empty())
+        return;
+
+    auto job = jobManager.createJob();
+    ApkJobDescription apkJob;
+    apkJob.versionCode = version;
+    for (auto const &l : links) {
+        device.downloadApk(l, job.dataDir + "/" + l.name + ".apk");
+        apkJob.apks.emplace_back(l.name, l.name + ".apk");
+    }
+    jobManager.addApkJob(job, apkJob);
 }

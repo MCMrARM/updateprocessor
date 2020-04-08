@@ -52,13 +52,14 @@ public:
 
     void doContentSync();
 
-    void downloadApk(std::string const& packageName, int packageVersion, std::string const& downloadTo);
-
     struct DownloadLink {
         std::string name;
         std::string url;
+        std::string gzippedUrl;
     };
 
     std::vector<DownloadLink> getDownloadLinks(std::string const& packageName, int packageVersion);
+
+    void downloadApk(DownloadLink const &link, std::string const &downloadTo);
 
 };
