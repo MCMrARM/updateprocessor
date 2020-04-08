@@ -63,7 +63,7 @@ def handle_add_apk_job(job_uuid, job_desc, job_dir, job_logger):
                     with tarfile.open(idb_c_path, "w:xz") as tar:
                         tar.add(idb_path, arcname=so_filename + ".idb")
                     job_logger.info("Archiving IDB")
-                    archive_file(os.path.join(archive_base_name, so_filename + ".idb.tar.xz"), idb_c_path, "idb")
+                    archive_file(os.path.join(archive_base_name, so_filename + ".idb.tar.xz"), idb_c_path, "apk_idb")
                     job_logger.info("Deleting the IDB")
                     os.remove(idb_c_path)
 
