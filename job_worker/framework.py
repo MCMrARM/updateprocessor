@@ -48,7 +48,18 @@ class SshJobSource:
 
     def ping_job(self, job_uuid):
         cmd = ["cd", self.remote_root]
-        cmd = cmd + ["touch", "priv/jobs/active/" + job_uuid]
+        cmd = cmd + ["&&", "touch", "priv/jobs/active/" + job_uuid]
+        p = subprocess.run(self.base_cmd + cmd)
+        p.check_returncode()
+
+    def delete_job(self, job_uuid):
+        cmd = ["cd", self.remote_root]
+        cmd = cmd + ["&&", "rm", "priv/jobs/active/" + job_uuid]
+        p = subprocess.run(self.base_cmd + cmd)
+        p.check_returncode()
+
+        cmd = ["cd", self.remote_root]
+        cmd = cmd + ["&&", "rm", "-rf", "priv/jobs/data/" + job_uuid]
         p = subprocess.run(self.base_cmd + cmd)
         p.check_returncode()
 
@@ -111,7 +122,7 @@ class JobExecutor:
 
             job_logger.info("Deleting remote job files")
             try:
-                raise Exception("not implemented yet")
+                job_source.delete_job(job_uuid)
             except:
                 job_logger.exception("Deleting remote job files failed")
         except:
