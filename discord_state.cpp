@@ -119,8 +119,8 @@ void DiscordState::onMessage(discord::Message const& m) {
             try {
                 int version = std::atoi(m.content.substr(it + 1).c_str());
                 auto links = playManager.getBetaDeviceARM64().getDownloadLinks("com.mojang.minecraftpe", version);
-                auto links2 = playManager.getBetaDeviceX8664().getDownloadLinks("com.mojang.minecraftpe", version);
-                links.insert(links.end(), links2.begin(), links2.end());
+                if (links.empty())
+                    links = playManager.getBetaDeviceX8664().getDownloadLinks("com.mojang.minecraftpe", version);
 
                 discord::CreateMessageParams params ("Here's your download:");
                 params.embed["title"] = "Minecraft download";
