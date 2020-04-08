@@ -145,16 +145,26 @@ void DiscordState::onMessage(discord::Message const& m) {
                 links.insert(links.end(), links4.begin(), links4.end());
 
                 discord::CreateMessageParams params ("Here's your links:");
+                discord::CreateMessageParams params2 ("");
                 params.embed["title"] = "Minecraft download";
-                int i = 0;
+                int i = 0, j = 0;
+                std::set<std::string> already_included;
                 for (auto const &p : links) {
-                    if (p.name != "config.x86_64" && p.name != "config.x86" && p.name != "config.armeabi_v7a" && p.name != "config.arm64_v8a")
+                    if (p.name != "config.x86_64" && p.name != "config.x86" && p.name != "config.armeabi_v7a" && p.name != "config.arm64_v8a") {
+                        if (already_included.count(p.name) > 0)
+                            continue;
+                        already_included.insert(p.name);
+                        params.embed["fields"][i]["name"] = p.name;
+                        params.embed["fields"][i]["value"] = p.url;
+                        ++i;
                         continue;
-                    params.embed["fields"][i]["name"] = p.name;
-                    params.embed["fields"][i]["value"] = p.url;
-                    ++i;
+                    }
+                    params2.embed["fields"][j]["name"] = p.name;
+                    params2.embed["fields"][j]["value"] = p.url;
+                    ++j;
                 }
                 api.createMessage(m.channel, params);
+                api.createMessage(m.channel, params2);
             } catch (std::exception& e) {
                 api.createMessage(m.channel, "Error getting version info");
             }
