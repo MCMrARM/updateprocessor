@@ -14,6 +14,16 @@ JobManager::JobManager() : dataRoot("priv/jobs/data"), pendingRoot("priv/jobs/pe
     FileUtils::mkdirs(pendingRoot);
     FileUtils::mkdirs(activeRoot);
     cleanUpDataDir();
+    handleJobTimeOut();
+}
+
+JobManager::~JobManager() {
+    timeOutThreadMutex.lock();
+    timeOutThreadStopped = true;
+    timeOutThreadStopCv.notify_all();
+    timeOutThreadMutex.unlock();
+    if (timeOutThread.joinable())
+        timeOutThread.join();
 }
 
 void JobManager::cleanUpDataDir() {
@@ -76,4 +86,44 @@ void JobManager::addApkJob(JobMeta const &meta, ApkJobDescription const &desc) {
     char *dataDirRpath = realpath(meta.dataDir.c_str(), nullptr);
     symlink(dataDirRpath, (pendingRoot + "/" + meta.uuid).c_str());
     free(dataDirRpath);
+}
+
+void JobManager::handleJobTimeOut() {
+    DIR *d = opendir(activeRoot.c_str());
+    dirent *ent;
+    while ((ent = readdir(d)) != nullptr) {
+        if (ent->d_name[0] == '.')
+            continue;
+        struct stat data;
+        if (stat((activeRoot + "/" + ent->d_name).c_str(), &data))
+            continue;
+        if (time(nullptr) - data.st_mtim.tv_sec > 60 * 10) {
+            printf("Job timed out: %s\n", ent->d_name);
+
+            char buf[256];
+            ssize_t ret = readlink((activeRoot + "/" + ent->d_name).c_str(), buf, sizeof(buf) - 1);
+            if (ret < 0 || ret >= sizeof(buf) - 1) {
+                printf("readlink failed\n");
+                continue;
+            }
+            buf[ret] = '\0';
+            remove((activeRoot + "/" + ent->d_name).c_str());
+            symlink(buf, (pendingRoot + "/" + ent->d_name).c_str());
+        }
+    }
+    closedir(d);
+}
+
+void JobManager::runJobTimeOutThread() {
+    std::unique_lock<std::mutex> lk(timeOutThreadMutex);
+    while (!timeOutThreadStopped) {
+        handleJobTimeOut();
+
+        auto until = std::chrono::system_clock::now() + std::chrono::minutes(10);
+        timeOutThreadStopCv.wait_until(lk, until);
+    }
+}
+
+void JobManager::startTimeOutThread() {
+    timeOutThread = std::thread(std::bind(&JobManager::runJobTimeOutThread, this));
 }

@@ -2,6 +2,9 @@
 
 #include <string>
 #include <vector>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
 
 struct JobMeta {
     std::string uuid;
@@ -16,12 +19,24 @@ struct ApkJobDescription {
 class JobManager {
 
 private:
-    std::string dataRoot, pendingRoot, activeRoot;
+    const std::string dataRoot, pendingRoot, activeRoot;
+    std::thread timeOutThread;
+    std::mutex timeOutThreadMutex;
+    bool timeOutThreadStopped = false;
+    std::condition_variable timeOutThreadStopCv;
+
+    void runJobTimeOutThread();
 
 public:
     JobManager();
 
+    ~JobManager();
+
     void cleanUpDataDir();
+
+    void handleJobTimeOut();
+
+    void startTimeOutThread();
 
     JobMeta createJob();
 
