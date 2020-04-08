@@ -111,15 +111,16 @@ void DiscordState::onMessage(discord::Message const& m) {
             } catch (std::exception& e) {
                 api.createMessage(m.channel, "Error getting URL");
             }
-        } else if ((command == "!dl_arm" || command == "!dl_x86") && checkOp(m)) {
+        } else if (command == "!dl" && checkOp(m)) {
             if (it == std::string::npos || it + 1 >= m.content.size()) {
                 api.createMessage(m.channel, "Missing required argument");
                 return;
             }
             try {
                 int version = std::atoi(m.content.substr(it + 1).c_str());
-                auto &dev = command == "!dl_x86" ? playManager.getBetaDeviceX86() : playManager.getBetaDeviceARM();
-                auto links = dev.getDownloadLinks("com.mojang.minecraftpe", version);
+                auto links = playManager.getBetaDeviceARM64().getDownloadLinks("com.mojang.minecraftpe", version);
+                auto links2 = playManager.getBetaDeviceX8664().getDownloadLinks("com.mojang.minecraftpe", version);
+                links.insert(links.end(), links2.begin(), links2.end());
 
                 discord::CreateMessageParams params ("Here's your download:");
                 params.embed["title"] = "Minecraft download";
@@ -138,10 +139,10 @@ void DiscordState::onMessage(discord::Message const& m) {
             try {
                 int version = std::atoi(m.content.substr(it + 1).c_str());
                 version += (1 - ((version / 1000000) % 10)) * 1000000;
-                auto links = playManager.getBetaDeviceARM().getDownloadLinks("com.mojang.minecraftpe", version);
-                auto links2 = playManager.getBetaDeviceX86().getDownloadLinks("com.mojang.minecraftpe", version + 1000000);
-                auto links3 = playManager.getBetaDeviceARM().getDownloadLinks("com.mojang.minecraftpe", version + 2000000);
-                auto links4 = playManager.getBetaDeviceX86().getDownloadLinks("com.mojang.minecraftpe", version + 3000000);
+                auto links = playManager.getBetaDeviceARM64().getDownloadLinks("com.mojang.minecraftpe", version);
+                auto links2 = playManager.getBetaDeviceX8664().getDownloadLinks("com.mojang.minecraftpe", version + 1000000);
+                auto links3 = playManager.getBetaDeviceARM64().getDownloadLinks("com.mojang.minecraftpe", version + 2000000);
+                auto links4 = playManager.getBetaDeviceX8664().getDownloadLinks("com.mojang.minecraftpe", version + 3000000);
                 links.insert(links.end(), links2.begin(), links2.end());
                 links.insert(links.end(), links3.begin(), links3.end());
                 links.insert(links.end(), links4.begin(), links4.end());

@@ -170,7 +170,8 @@ std::vector<PlayDevice::DownloadLink> PlayDevice::getDownloadLinks(std::string c
 
     std::vector<PlayDevice::DownloadLink> links;
 
-    links.push_back({"main", dd.downloadurl(), dd.gzippeddownloadurl()});
+    if (dd.has_downloadurl() || dd.has_gzippeddownloadurl())
+        links.push_back({"main", dd.downloadurl(), dd.gzippeddownloadurl()});
 
     for (auto const &d : dd.splitdeliverydata())
         links.push_back({d.id(), d.downloadurl(), d.gzippeddownloadurl()});
