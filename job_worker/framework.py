@@ -107,6 +107,12 @@ class JobExecutor:
             if job_desc["type"] not in self.job_handlers:
                 raise Exception("No matching job execution handler")
             self.job_handlers[job_desc["type"]](job_uuid, job_desc, job_dir, job_logger)
+
+            job_logger.info("Deleting remote job files")
+            try:
+                raise Exception("not implemented yet")
+            except:
+                job_logger.exception("Deleting remote job files failed")
         except:
             job_logger.exception("Job execution failed")
         finally:
@@ -117,12 +123,6 @@ class JobExecutor:
                 shutil.rmtree(job_dir)
             except:
                 job_logger.exception("Deleting local job files failed")
-
-            job_logger.info("Deleting remote job files")
-            try:
-                raise Exception("not implemented yet")
-            except:
-                job_logger.exception("Deleting remote job files failed")
 
             self.ping_thread.remove_job(job_uuid)
             job_logger.info("Cleanup completed")
