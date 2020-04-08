@@ -203,17 +203,17 @@ void DiscordState::onNewVersion(int version, std::string const& versionString,
                                 std::string const& changelog, std::string const& variant) {
     static std::regex regexNewlines ("<br>");
 
-    bool isBeta = variant.length() >= 5 && memcmp(variant.c_str(), "beta/", 5) == 0;
     bool isARM = variant == "beta/arm" || variant == "release/arm";
+    if (!isARM)
+        return;
+
+    bool isBeta = variant.length() >= 5 && memcmp(variant.c_str(), "beta/", 5) == 0;
 
     discord::CreateMessageParams params (isBeta ? "**New beta available**" : "**New version available**");
     params.embed["title"] = versionString + (isBeta ? " (beta)" : "");
     if (isARM)
         params.embed["description"] = std::regex_replace(changelog, regexNewlines, "\n");
     params.embed["footer"]["text"] = "Variant: " + variant + "; version code: " + std::to_string(version);
-
-    if (!isARM)
-        params.content = "";
 
     for (std::string const& chan : broadcastChannels) {
         api.createMessage(chan, params);
