@@ -51,7 +51,7 @@ def handle_add_apk_job(job_uuid, job_desc, job_dir, job_logger):
                     arch_name = name[4:-len("/libminecraftpe.so")]
                     so_filename = "libminecraftpe_" + str(version_code) + "_" + arch_name
                     extract_path = os.path.join(job_dir, so_filename + ".so")
-                    job_logger.info("Extracting native library: {extract_path} from {apk_name}:{name}")
+                    job_logger.info(f"Extracting native library: {extract_path} from {apk_name}:{name}")
                     with z.open(name) as src, open(extract_path, "wb") as dest:
                         shutil.copyfileobj(src, dest)
                     job_logger.info("Starting IDA analysis")

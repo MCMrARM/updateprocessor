@@ -32,7 +32,8 @@ class SshJobSource:
         job_logger = logging.getLogger("job." + job_uuid)
         job_logger.info("Received job from remote: " + job)
         tmp_dir = os.path.join(tmp_root, job_uuid)
-        os.makedirs(tmp_root)
+        if not os.path.exists(tmp_root):
+            os.makedirs(tmp_root)
         if os.path.exists(tmp_dir):
             job_logger.error("Job directory already exists; aborting")
             return None
