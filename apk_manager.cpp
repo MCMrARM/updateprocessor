@@ -11,8 +11,12 @@ ApkManager::ApkManager(PlayManager& playManager, JobManager& jobManager) :
     versionCheckConfig.load(ifs);
     releaseARMVersionInfo.loadFromConfig(versionCheckConfig, "release.arm.");
     releaseX86VersionInfo.loadFromConfig(versionCheckConfig, "release.x86.");
+    releaseARM64VersionInfo.loadFromConfig(versionCheckConfig, "release.arm64.");
+    releaseX8664VersionInfo.loadFromConfig(versionCheckConfig, "release.x86_64.");
     betaARMVersionInfo.loadFromConfig(versionCheckConfig, "beta.arm.");
     betaX86VersionInfo.loadFromConfig(versionCheckConfig, "beta.x86.");
+    betaARM64VersionInfo.loadFromConfig(versionCheckConfig, "beta.arm64.");
+    betaX8664VersionInfo.loadFromConfig(versionCheckConfig, "beta.x86_64.");
 }
 
 void ApkManager::requestForceCheck() {
@@ -22,8 +26,12 @@ void ApkManager::requestForceCheck() {
 void ApkManager::saveVersionInfo() {
     releaseARMVersionInfo.saveToConfig(versionCheckConfig, "release.arm.");
     releaseX86VersionInfo.saveToConfig(versionCheckConfig, "release.x86.");
+    releaseARM64VersionInfo.saveToConfig(versionCheckConfig, "release.arm64.");
+    releaseX8664VersionInfo.saveToConfig(versionCheckConfig, "release.x86_64.");
     betaARMVersionInfo.saveToConfig(versionCheckConfig, "beta.arm.");
     betaX86VersionInfo.saveToConfig(versionCheckConfig, "beta.x86.");
+    betaARM64VersionInfo.saveToConfig(versionCheckConfig, "beta.arm64.");
+    betaX8664VersionInfo.saveToConfig(versionCheckConfig, "beta.x86_64.");
     std::ofstream ofs("priv/versioninfo.conf");
     versionCheckConfig.save(ofs);
 }
