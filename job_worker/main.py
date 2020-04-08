@@ -2,11 +2,8 @@ import os
 import shutil
 import logging
 from framework import SshJobSource, JobPingThread, JobExecutor, JobPoolExecutor
+from config import config
 from apk_job import handle_add_apk_job
-import json
-
-with open("config.json", "r") as f:
-    config = json.load(f)
 
 job_root_logger = logging.getLogger("job")
 job_root_logger.setLevel(logging.DEBUG)
