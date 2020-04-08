@@ -65,11 +65,15 @@ void ApkManager::updateLatestVersions() {
         std::string versionString;
         CheckResult result;
     };
-    VariantInfo variants[4] = {
+    VariantInfo variants[8] = {
             {"release/arm", playManager.getReleaseDeviceARM(), releaseARMVersionInfo},
+            {"release/arm64", playManager.getReleaseDeviceARM64(), releaseARM64VersionInfo},
             {"release/x86", playManager.getReleaseDeviceX86(), releaseX86VersionInfo},
+            {"release/x86_64", playManager.getReleaseDeviceX8664(), releaseX8664VersionInfo},
             {"beta/arm", playManager.getBetaDeviceARM(), betaARMVersionInfo},
-            {"beta/x86", playManager.getBetaDeviceX86(), betaX86VersionInfo}
+            {"beta/arm64", playManager.getBetaDeviceARM64(), betaARM64VersionInfo},
+            {"beta/x86", playManager.getBetaDeviceX86(), betaX86VersionInfo},
+            {"beta/x86_64", playManager.getBetaDeviceX8664(), betaX8664VersionInfo}
     };
 
     bool hasAnyUpdate = false;
@@ -157,7 +161,7 @@ void ApkManager::downloadAndProcessApk(PlayDevice& device, int version, bool onl
     if (onlyNatives) {
         std::vector<PlayDevice::DownloadLink> linksCopy;
         std::copy_if(links.begin(), links.end(), std::back_inserter(linksCopy), [](PlayDevice::DownloadLink const &l) {
-            return l.name == "config.x86" || l.name == "config.x86_64" || l.name == "config.armeabi_v7a" || l.name == "config.arm64_v8a";
+            return l.name == "main" || l.name == "config.x86" || l.name == "config.x86_64" || l.name == "config.armeabi_v7a" || l.name == "config.arm64_v8a";
         });
     }
     if (links.empty())

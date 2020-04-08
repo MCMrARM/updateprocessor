@@ -20,7 +20,7 @@ private:
 
     static playapi::device_info loadDeviceInfo(std::string const& devicePath);
 
-    static device_config loadDeviceStateInfo(playapi::device_info& device, std::string const& devicePath);
+    static device_config loadDeviceStateInfo(playapi::device_info& device, std::string const& statePath);
 
     static playapi::login_api loadLoginInfo(playapi::device_info& device, device_config& deviceConfig,
                                             app_config const& appConfig);
@@ -30,8 +30,8 @@ private:
     static void storeAuthCookies(device_config& device, playapi::login_api& login);
 
 public:
-    PlayDevice(app_config const& appConfig, std::string const& devicePath) :
-            device(loadDeviceInfo(devicePath)), deviceConfig(loadDeviceStateInfo(device, devicePath)),
+    PlayDevice(app_config const& appConfig, std::string const& devicePath, std::string const& statePath) :
+            device(loadDeviceInfo(devicePath)), deviceConfig(loadDeviceStateInfo(device, statePath)),
             login(loadLoginInfo(device, deviceConfig, appConfig)), api(device), apiMcs(device) {
         api.set_auth(login);
         api.set_checkin_data(deviceConfig.checkin_data);

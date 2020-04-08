@@ -13,8 +13,8 @@ playapi::device_info PlayDevice::loadDeviceInfo(std::string const& devicePath) {
     return device;
 }
 
-device_config PlayDevice::loadDeviceStateInfo(playapi::device_info& device, std::string const& devicePath) {
-    device_config devState(devicePath + ".state");
+device_config PlayDevice::loadDeviceStateInfo(playapi::device_info& device, std::string const& statePath) {
+    device_config devState(statePath);
     devState.load();
     devState.load_device_info_data(device);
     device.generate_fields();

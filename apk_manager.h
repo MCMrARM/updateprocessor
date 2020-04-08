@@ -36,8 +36,8 @@ private:
     JobManager&jobManager;
     std::vector<NewVersionCallback> newVersionCallback;
     playapi::config versionCheckConfig;
-    ApkVersionInfo releaseARMVersionInfo, releaseX86VersionInfo;
-    ApkVersionInfo betaARMVersionInfo, betaX86VersionInfo;
+    ApkVersionInfo releaseARMVersionInfo, releaseARM64VersionInfo, releaseX86VersionInfo, releaseX8664VersionInfo;
+    ApkVersionInfo betaARMVersionInfo, betaARM64VersionInfo, betaX86VersionInfo, betaX8664VersionInfo;
     std::chrono::system_clock::time_point lastVersionUpdate;
 
     void saveVersionInfo();
