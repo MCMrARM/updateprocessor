@@ -155,7 +155,7 @@ class JobPoolExecutor:
                     self.futures = [f.running() for f in self.futures]
                 job_root_logger.info("Waiting for a job...")
                 job_uuid, job_dir, job_logger = job_source.pull_job(tmp_root)
-                executor.submit(self.job_executor.execute, job_source, job_uuid, job_dir, job_logger)
+                self.futures.append(executor.submit(self.job_executor.execute, job_source, job_uuid, job_dir, job_logger))
         except KeyboardInterrupt:
             pass
         job_root_logger.info("Waiting for running jobs to complete...")
