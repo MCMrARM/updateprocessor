@@ -70,10 +70,12 @@ void DiscordState::onMessage(discord::Message const& m) {
             params.embed["title"] = "Minecraft versions";
             params.embed["fields"][0]["name"] = "Release";
             params.embed["fields"][0]["value"] = buildVersionFieldString(apkManager.getReleaseARMVersionInfo(),
-                                                                         apkManager.getReleaseX86VersionInfo());
+                    apkManager.getReleaseX86VersionInfo(), apkManager.getReleaseARM64VersionInfo(),
+                    apkManager.getReleaseX8664VersionInfo());
             params.embed["fields"][1]["name"] = "Beta";
             params.embed["fields"][1]["value"] = buildVersionFieldString(apkManager.getBetaARMVersionInfo(),
-                                                                         apkManager.getBetaX86VersionInfo());
+                    apkManager.getBetaX86VersionInfo(), apkManager.getBetaARM64VersionInfo(),
+                    apkManager.getBetaX8664VersionInfo());
             params.embed["footer"]["text"] = std::string("Checked on ") + tt;
             try {
                 api.createMessage(m.channel, params);
@@ -172,10 +174,12 @@ void DiscordState::onMessage(discord::Message const& m) {
     }
 }
 
-std::string DiscordState::buildVersionFieldString(ApkVersionInfo const& arm, ApkVersionInfo const& x86) {
+std::string DiscordState::buildVersionFieldString(ApkVersionInfo const& arm, ApkVersionInfo const& x86,
+        ApkVersionInfo const& arm64, ApkVersionInfo const& x8664) {
     std::stringstream ss;
     ss << "**" << arm.versionString << "** "
-       << " (ARM version code: " << arm.versionCode << ", x86 version code: " << x86.versionCode << ")";
+       << " (ARM version code: " << arm.versionCode << ", x86 version code: " << x86.versionCode
+       << ", ARM64 version code: " << arm64.versionCode << ", x86_64 version code: " << x8664.versionCode << ")";
     return ss.str();
 }
 

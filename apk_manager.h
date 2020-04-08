@@ -85,6 +85,14 @@ public:
         std::lock_guard<std::mutex> lk(data_mutex);
         return releaseX86VersionInfo;
     }
+    ApkVersionInfo getReleaseARM64VersionInfo() {
+        std::lock_guard<std::mutex> lk(data_mutex);
+        return releaseARM64VersionInfo;
+    }
+    ApkVersionInfo getReleaseX8664VersionInfo() {
+        std::lock_guard<std::mutex> lk(data_mutex);
+        return releaseX8664VersionInfo;
+    }
     ApkVersionInfo getBetaARMVersionInfo() {
         std::lock_guard<std::mutex> lk(data_mutex);
         return betaARMVersionInfo;
@@ -92,6 +100,14 @@ public:
     ApkVersionInfo getBetaX86VersionInfo() {
         std::lock_guard<std::mutex> lk(data_mutex);
         return betaX86VersionInfo;
+    }
+    ApkVersionInfo getBetaARM64VersionInfo() {
+        std::lock_guard<std::mutex> lk(data_mutex);
+        return betaARM64VersionInfo;
+    }
+    ApkVersionInfo getBetaX8664VersionInfo() {
+        std::lock_guard<std::mutex> lk(data_mutex);
+        return betaX8664VersionInfo;
     }
     std::chrono::system_clock::time_point getLastUpdateTime() {
         std::lock_guard<std::mutex> lk(data_mutex);
