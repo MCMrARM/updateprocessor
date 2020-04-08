@@ -22,7 +22,7 @@ include_directories(${WEBSOCKET_LIB_PATH}/src)
 
 include_directories(json/include)
 
-add_executable(updateprocessor ${WEBSOCKET_LIB_SOURCES} main.cpp play_device.cpp play_device.h play_manager.cpp play_manager.h playapi/src/config.cpp discord.cpp discord.h discord_gateway.cpp discord_gateway.h discord_state.cpp discord_state.h file_utils.cpp file_utils.h apk_manager.cpp apk_manager.h wake_on_lan.cpp wake_on_lan.h telegram.cpp telegram.h telegram_state.cpp telegram_state.h win10_store_network.cpp win10_store_network.h win10_store_manager.cpp win10_store_manager.h win10_versiondb_manager.cpp win10_versiondb_manager.h job_manager.cpp job_manager.h)
+add_executable(updateprocessor ${WEBSOCKET_LIB_SOURCES} main.cpp play_device.cpp play_device.h play_manager.cpp play_manager.h playapi/src/config.cpp discord.cpp discord.h discord_gateway.cpp discord_gateway.h discord_state.cpp discord_state.h file_utils.cpp file_utils.h apk_manager.cpp apk_manager.h telegram.cpp telegram.h telegram_state.cpp telegram_state.h win10_store_network.cpp win10_store_network.h win10_store_manager.cpp win10_store_manager.h win10_versiondb_manager.cpp win10_versiondb_manager.h job_manager.cpp job_manager.h)
 target_include_directories(updateprocessor PUBLIC ${LIBGIT2_INCLUDE_DIR})
 target_link_libraries(updateprocessor gplayapi rapidxml msa dl uuid ${LIBGIT2_LIBRARIES})
 
