@@ -124,6 +124,6 @@ for e in sorted(Path(os.path.join("priv", "logs")).iterdir(), key=os.path.getcti
     log_order.append(e.name[:-4])
 
 
-start_server = websockets.serve(log_client, "127.0.0.1", 9453)
+start_server = websockets.serve(log_client, "0.0.0.0", 9453)
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
