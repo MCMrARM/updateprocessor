@@ -1,0 +1,3 @@
+AxmlParserPY==0.0.4
+beautifulsoup4==4.9.0
+inotify==0.2.10
