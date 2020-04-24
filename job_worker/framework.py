@@ -152,7 +152,7 @@ class JobPoolExecutor:
             while True:
                 if len(self.futures) >= self.max_jobs:
                     concurrent.futures.wait(self.futures, return_when = concurrent.futures.FIRST_COMPLETED)
-                    self.futures = [f.running() for f in self.futures]
+                    self.futures = [f for f in self.futures if f.running()]
                 job_root_logger.info("Waiting for a job...")
                 job_uuid, job_dir, job_logger = job_source.pull_job(tmp_root)
                 self.futures.append(executor.submit(self.job_executor.execute, job_source, job_uuid, job_dir, job_logger))
