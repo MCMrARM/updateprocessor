@@ -4,6 +4,7 @@ import logging
 from framework import SshJobSource, JobPingThread, JobExecutor, JobPoolExecutor
 from config import config
 from apk_job import handle_add_apk_job
+from ida_job import handle_ida_job
 
 job_root_logger = logging.getLogger("job")
 job_root_logger.setLevel(logging.DEBUG)
@@ -25,6 +26,7 @@ ping_thread = JobPingThread(source)
 ping_thread.start()
 executor = JobExecutor(ping_thread)
 executor.register_job_handler("updateprocessor/addApkJob", handle_add_apk_job)
+executor.register_job_handler("updateprocessor/idaJob", handle_ida_job)
 pool_executor = JobPoolExecutor(executor)
 pool_executor.run_main_loop(source, tmp_root)
 ping_thread.stop()

@@ -1,35 +1,12 @@
 import os
 import axmlparserpy.apk as apk
 import zipfile
-import tarfile
 import shutil
-import subprocess
 import re
-from config import config
 from archive import archive_file
+from ida_job import create_ida_job
 
-
-def handle_ida_launch(job_logger, filepath, arch):
-    is64bit = arch == "arm64-v8a" or arch == "x86_64"
-    ida_bin = "idat64" if is64bit else "idat"
-    ida_bin_path = os.path.join(config["ida_root"], ida_bin)
-    dir = os.path.dirname(os.path.realpath(__file__))
-    args = [ida_bin_path, "-c", "-A", "-P", "-L/dev/stdout", "-S" + os.path.join(dir, "ida_analysis.py"), filepath]
-    job_logger.info(f"Launching IDA: {args}")
-    p = subprocess.Popen(args, stdout=subprocess.PIPE)
-    while True:
-        line = p.stdout.readline()
-        if not line:
-            break
-        line = line.decode('utf-8')
-        if line[-1] == '\n':
-            line = line[:-1]
-        job_logger.info(line)
-    if p.wait() != 0:
-        raise Exception(f"Failed to launch IDA ({p.returncode})")
-    return filepath + (".i64" if is64bit else ".idb")
-
-def handle_add_apk_job(job_uuid, job_desc, job_dir, job_logger):
+def handle_add_apk_job(job_source, job_uuid, job_desc, job_dir, job_logger):
     apks = [(f["name"], os.path.join(job_dir, f["path"])) for f in job_desc["apks"]]
 
     main_apk_path = next((path for (name, path) in apks if name == "main"))
@@ -55,18 +32,14 @@ def handle_add_apk_job(job_uuid, job_desc, job_dir, job_logger):
                     job_logger.info(f"Extracting native library: {extract_path} from {apk_name}:{name}")
                     with z.open(name) as src, open(extract_path, "wb") as dest:
                         shutil.copyfileobj(src, dest)
-                    job_logger.info("Starting IDA analysis")
-                    idb_path = handle_ida_launch(job_logger, extract_path, arch_name)
+
+                    job_logger.info("Creating IDA job")
+                    is_64_bit = arch_name == "arm64-v8a" or arch_name == "x86_64"
+                    archive_path = os.path.join(archive_base_name, so_filename + (".i64" if is_64_bit else ".idb") + ".tar.xz")
+                    create_ida_job(job_source, extract_path, archive_path, "apk_idb", is_64_bit, True)
+
                     job_logger.info("Deleting the extracted file")
                     os.remove(extract_path)
-                    job_logger.info("Compressing IDB")
-                    idb_c_path = os.path.join(job_dir, so_filename + idb_path[-4:] + ".tar.xz")
-                    with tarfile.open(idb_c_path, "w:xz") as tar:
-                        tar.add(idb_path, arcname=so_filename + idb_path[-4:])
-                    job_logger.info("Archiving IDB")
-                    archive_file(os.path.join(archive_base_name, so_filename + idb_path[-4:] + ".tar.xz"), idb_c_path, "apk_idb")
-                    job_logger.info("Deleting the IDB")
-                    os.remove(idb_c_path)
 
 
     pass

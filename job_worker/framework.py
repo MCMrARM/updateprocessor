@@ -4,6 +4,7 @@ import shutil
 import logging
 import json
 import concurrent.futures
+import uuid
 from threading import Lock, Thread, Event
 
 job_root_logger = logging.getLogger("job")
@@ -16,6 +17,10 @@ class SshJobSource:
 
     def _scp_from_remote(self, src, to):
         p = subprocess.run(["scp", "-qr", self.host + ":" + src, to])
+        p.check_returncode()
+
+    def _scp_to_remote(self, src, to):
+        p = subprocess.run(["scp", "-qr", src, self.host + ":" + to])
         p.check_returncode()
 
     def pull_job(self, tmp_root):
@@ -43,6 +48,7 @@ class SshJobSource:
             self._scp_from_remote(job, tmp_dir)
         except subprocess.SubprocessError:
             job_logger.exception("Failed to fetch job files")
+            return None
         job_logger.info("Job pull finished")
         return job_uuid, tmp_dir, job_logger
 
@@ -60,6 +66,20 @@ class SshJobSource:
 
         cmd = ["cd", self.remote_root]
         cmd = cmd + ["&&", "rm", "-rf", "priv/jobs/data/" + job_uuid]
+        p = subprocess.run(self.base_cmd + cmd)
+        p.check_returncode()
+
+    def create_job(self, local_job_dir, logger = None):
+        logger = logger if logger is not None else job_root_logger
+
+        job_uuid = str(uuid.uuid4())
+        remote_dir = os.path.join(self.remote_root, "priv/jobs/data/" + job_uuid)
+        logger.info("Uploading job files to: " + remote_dir)
+        self._scp_to_remote(local_job_dir, remote_dir)
+
+        logger.info("Registering job")
+        cmd = ["cd", self.remote_root]
+        cmd = cmd + ["&&", "ln", "-s", remote_dir, "priv/jobs/pending/" + job_uuid]
         p = subprocess.run(self.base_cmd + cmd)
         p.check_returncode()
 
@@ -118,7 +138,7 @@ class JobExecutor:
             job_logger.info("Executing job handler: " + job_desc["type"])
             if job_desc["type"] not in self.job_handlers:
                 raise Exception("No matching job execution handler")
-            self.job_handlers[job_desc["type"]](job_uuid, job_desc, job_dir, job_logger)
+            self.job_handlers[job_desc["type"]](job_source, job_uuid, job_desc, job_dir, job_logger)
 
             job_logger.info("Deleting remote job files")
             try:
