@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+<head>
+    <title>Updateprocessor logs</title>
+    <link href='http://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'>
+    <style>
+        html, body {
+            padding: 0;
+            margin: 0;
+            background: #222;
+            color: white;
+            font-family: 'Roboto', sans-serif;
+        }
+        #sidebar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 250px;
+            background: #2a2a2a;
+            overflow-x: hidden;
+            overflow-y: auto;
+            border-right: 1px solid #444;
+        }
+        .app-header {
+            display: block;
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            background: #0081cb;
+            color: #fff;
+            font-size: 20px;
+            margin: 0 0 8px;
+        }
+        #log_view_ctr {
+            position: absolute;
+            left: 251px;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        #logs li {
+            padding: 4px 8px;
+            cursor: pointer;
+        }
+        #logs li:hover {
+            background: #333;
+        }
+        #logs li.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-weight: 700;
+        }
+        #log_view {
+            font-family: monospace;
+            margin: 8px;
+        }
+        .level-debug {
+            color: #607d8b;
+        }
+        .level-info {
+            color: #2196f3;
+        }
+        .level-warning {
+            color: #ff9800;
+        }
+        .level-error, .level-critical {
+            color: #f44336;
+        }
+        .log-date {
+            color: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+<div id="sidebar">
+    <h1 class="app-header">Log Viewer</h1>
+    <ul id="logs"></ul>
+</div>
+<div id="log_view_ctr">
+    <ul id="log_view"></ul>
+</div>
+<script>
+    var logsCtr = document.getElementById("logs");
+    var logScrollCtr = document.getElementById("log_view_ctr");
+    var logCtr = document.getElementById("log_view");
+    var sidebarEntries = {};
+
+    var ws = new WebSocket("ws://" + window.location.hostname + ":9453/");
+    var currentLogName = null;
+
+    function setCurrentLog(logName) {
+        if (currentLogName === logName)
+            return;
+
+        if (currentLogName !== null) {
+            ws.send(JSON.stringify({
+                "type": "unsubscribe",
+                "log": currentLogName
+            }));
+            sidebarEntries[currentLogName].classList.remove("active");
+        }
+        currentLogName = logName;
+        logCtr.innerText = ""; // clear
+        if (logName !== null) {
+            ws.send(JSON.stringify({
+                "type": "subscribe",
+                "log": currentLogName
+            }));
+            ws.send(JSON.stringify({
+                "type": "get_log",
+                "log": currentLogName
+            }));
+            sidebarEntries[currentLogName].classList.add("active");
+        }
+    }
+
+    function addLogEntry(data) {
+        var entry = document.createElement("li");
+        entry.textContent = data["message"];
+        entry.classList.add("level-" + data["level"].toLowerCase());
+
+        var date = new Date(data["date"] * 1000);
+        var dateSpan = document.createElement("span");
+        dateSpan.textContent = date.toLocaleDateString("en-gb") + " " + date.toLocaleTimeString("en-gb") + " ";
+        dateSpan.classList.add("log-date");
+        entry.insertBefore(dateSpan, entry.firstChild);
+
+        logCtr.appendChild(entry);
+    }
+
+    ws.onopen = function () {
+        var logName = currentLogName;
+        currentLogName = null;
+        ws.send(JSON.stringify({
+            "type": "subscribe_log_list"
+        }));
+        setCurrentLog(logName);
+    };
+    ws.onclose = function () {
+        alert("Lost connection to server");
+    };
+    ws.onmessage = function (event) {
+        var data = JSON.parse(event.data);
+        if (data["type"] === "log_list_update") {
+            logsCtr.textContent = "";
+            sidebarEntries = {};
+            for (var i = data["logs"].length - 1; i >= 0; --i) {
+                var entry = document.createElement("li");
+                entry.textContent = data["logs"][i];
+                logsCtr.appendChild(entry);
+                entry.logName = data["logs"][i];
+                entry.onclick = function() {
+                    setCurrentLog(this.logName);
+                };
+                sidebarEntries[data["logs"][i]] = entry;
+            }
+
+            if (data["logs"].length > 0 && currentLogName === null)
+                setCurrentLog(data["logs"][data["logs"].length - 1]);
+        } else if (data["type"] === "log") {
+            if (data["log"] !== currentLogName)
+                return;
+            var atBottom = (logScrollCtr.scrollTop >= logScrollCtr.scrollHeight - logScrollCtr.offsetHeight);
+            addLogEntry(data);
+            if (atBottom)
+                logScrollCtr.scrollTop = logScrollCtr.scrollHeight;
+        } else if (data["type"] === "log_archive") {
+            if (data["log"] !== currentLogName)
+                return;
+            logCtr.textContent = "";
+            var tdata = data["data"].split("\n");
+            for (var i = 0; i < tdata.length - 1; i++) {
+                addLogEntry(JSON.parse(tdata[i]));
+            }
+            logScrollCtr.scrollTop = logScrollCtr.scrollHeight;
+        }
+    };
+</script>
+</body>
+</html>

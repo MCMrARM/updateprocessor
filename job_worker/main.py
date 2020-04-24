@@ -5,6 +5,7 @@ from framework import SshJobSource, JobPingThread, JobExecutor, JobPoolExecutor
 from config import config
 from apk_job import handle_add_apk_job
 from ida_job import handle_ida_job
+import log_client
 
 job_root_logger = logging.getLogger("job")
 job_root_logger.setLevel(logging.DEBUG)
@@ -15,6 +16,8 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 console_logger.setFormatter(formatter)
 job_root_logger.addHandler(console_logger)
 
+log_client.start_log_client(config["log_uri"])
+job_root_logger.addHandler(log_client.MyLogHandler())
 
 tmp_root = config["tmp_dir"]
 
@@ -30,3 +33,5 @@ executor.register_job_handler("updateprocessor/idaJob", handle_ida_job)
 pool_executor = JobPoolExecutor(executor)
 pool_executor.run_main_loop(source, tmp_root)
 ping_thread.stop()
+
+log_client.stop_log_client()
