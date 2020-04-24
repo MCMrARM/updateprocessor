@@ -10,7 +10,8 @@ from archive import archive_file
 
 
 def handle_ida_launch(job_logger, filepath, arch):
-    ida_bin = "idat64" if arch == "arm64-v8a" or arch == "x86_64" else "idat"
+    is64bit = arch == "arm64-v8a" or arch == "x86_64"
+    ida_bin = "idat64" if is64bit else "idat"
     ida_bin_path = os.path.join(config["ida_root"], ida_bin)
     dir = os.path.dirname(os.path.realpath(__file__))
     args = [ida_bin_path, "-c", "-A", "-P", "-L/dev/stdout", "-S" + os.path.join(dir, "ida_analysis.py"), filepath]
@@ -26,7 +27,7 @@ def handle_ida_launch(job_logger, filepath, arch):
         job_logger.info(line)
     if p.wait() != 0:
         raise Exception(f"Failed to launch IDA ({p.returncode})")
-    return filepath + ".idb"
+    return filepath + (".i64" if is64bit else ".idb")
 
 def handle_add_apk_job(job_uuid, job_desc, job_dir, job_logger):
     apks = [(f["name"], os.path.join(job_dir, f["path"])) for f in job_desc["apks"]]
@@ -59,11 +60,11 @@ def handle_add_apk_job(job_uuid, job_desc, job_dir, job_logger):
                     job_logger.info("Deleting the extracted file")
                     os.remove(extract_path)
                     job_logger.info("Compressing IDB")
-                    idb_c_path = os.path.join(job_dir, so_filename + ".idb.tar.xz")
+                    idb_c_path = os.path.join(job_dir, so_filename + idb_path[-4:] + ".tar.xz")
                     with tarfile.open(idb_c_path, "w:xz") as tar:
-                        tar.add(idb_path, arcname=so_filename + ".idb")
+                        tar.add(idb_path, arcname=so_filename + idb_path[-4:])
                     job_logger.info("Archiving IDB")
-                    archive_file(os.path.join(archive_base_name, so_filename + ".idb.tar.xz"), idb_c_path, "apk_idb")
+                    archive_file(os.path.join(archive_base_name, so_filename + idb_path[-4:] + ".tar.xz"), idb_c_path, "apk_idb")
                     job_logger.info("Deleting the IDB")
                     os.remove(idb_c_path)
 
