@@ -89,7 +89,7 @@ std::string Win10StoreNetwork::buildGetConfigRequest() {
     return ss.str();
 }
 
-std::string Win10StoreNetwork::buildCookieRequest() {
+std::string Win10StoreNetwork::buildCookieRequest(std::string const& configLastChanged) {
     xml_document<> doc;
     auto envelope = doc.allocate_node(node_element, "s:Envelope");
     doc.append_node(envelope);
@@ -108,7 +108,7 @@ std::string Win10StoreNetwork::buildCookieRequest() {
     body->append_node(request);
     request->append_attribute(doc.allocate_attribute("xmlns", "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService"));
 
-    request->append_node(doc.allocate_node(node_element, "lastChange", "2019-11-14T00:00:00.0000000Z"));
+    request->append_node(doc.allocate_node(node_element, "lastChange", configLastChanged.c_str()));
     char timeBuf[512];
     formatTime(timeBuf, sizeof(timeBuf), std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
     request->append_node(doc.allocate_node(node_element, "currentTime", doc.allocate_string(timeBuf)));
@@ -287,6 +287,21 @@ void Win10StoreNetwork::doHttpRequest(const char *url, const char *data, std::st
         throw std::runtime_error("doHttpRequest: res not ok");
 }
 
+void Win10StoreNetwork::maybeThrowSOAPFault(rapidxml::xml_document<> &doc) {
+    std::string code;
+    try {
+        auto& envelope = firstNodeOrThrow(doc, "s:Envelope");
+        auto& body = firstNodeOrThrow(envelope, "s:Body");
+        auto& fault = firstNodeOrThrow(body, "s:Fault");
+        auto& detail = firstNodeOrThrow(fault, "s:Detail");
+        auto& errorCode = firstNodeOrThrow(detail, "ErrorCode");
+        code = errorCode.value();
+    } catch (std::exception &ignored) {
+    }
+    if (!code.empty())
+        throw SOAPError(code);
+}
+
 void Win10StoreNetwork::dumpConfig() {
     std::string request = buildGetConfigRequest();
     std::string ret;
@@ -295,8 +310,21 @@ void Win10StoreNetwork::dumpConfig() {
     doc.parse<0>(&ret[0]);
 }
 
-Win10StoreNetwork::CookieData Win10StoreNetwork::fetchCookie() {
-    std::string request = buildCookieRequest();
+std::string Win10StoreNetwork::fetchConfigLastChanged() {
+    std::string request = buildGetConfigRequest();
+    std::string ret;
+    doHttpRequest(Win10StoreNetwork::PRIMARY_URL, request.c_str(), ret);
+    xml_document<> doc;
+    doc.parse<0>(&ret[0]);
+    auto& envelope = firstNodeOrThrow(doc, "s:Envelope");
+    auto& body = firstNodeOrThrow(envelope, "s:Body");
+    auto& resp = firstNodeOrThrow(body, "GetConfigResponse");
+    auto& res = firstNodeOrThrow(resp, "GetConfigResult");
+    return firstNodeOrThrow(res, "LastChange").value();
+}
+
+Win10StoreNetwork::CookieData Win10StoreNetwork::fetchCookie(std::string const& configLastChanged) {
+    std::string request = buildCookieRequest(configLastChanged);
     std::string ret;
     doHttpRequest(Win10StoreNetwork::PRIMARY_URL, request.c_str(), ret);
     xml_document<> doc;
@@ -318,24 +346,29 @@ Win10StoreNetwork::SyncResult Win10StoreNetwork::syncVersion(CookieData const& c
     doHttpRequest(Win10StoreNetwork::PRIMARY_URL, request.c_str(), ret);
     xml_document<> doc;
     doc.parse<0>(&ret[0]);
-    auto& envelope = firstNodeOrThrow(doc, "s:Envelope");
-    auto& body = firstNodeOrThrow(envelope, "s:Body");
-    auto& resp = firstNodeOrThrow(body, "SyncUpdatesResponse");
-    auto& res = firstNodeOrThrow(resp, "SyncUpdatesResult");
-    auto& newUpdates = firstNodeOrThrow(res, "NewUpdates");
-    SyncResult data;
-    for (auto it = newUpdates.first_node("UpdateInfo"); it != nullptr; it = it->next_sibling("UpdateInfo")) {
-        UpdateInfo info;
-        info.serverId = firstNodeOrThrow(*it, "ID").value();
-        info.addXmlInfo(firstNodeOrThrow(*it, "Xml").value()); // NOTE: destroys the node
-        data.newUpdates.push_back(std::move(info));
+    try {
+        auto& envelope = firstNodeOrThrow(doc, "s:Envelope");
+        auto& body = firstNodeOrThrow(envelope, "s:Body");
+        auto& resp = firstNodeOrThrow(body, "SyncUpdatesResponse");
+        auto& res = firstNodeOrThrow(resp, "SyncUpdatesResult");
+        auto& newUpdates = firstNodeOrThrow(res, "NewUpdates");
+        SyncResult data;
+        for (auto it = newUpdates.first_node("UpdateInfo"); it != nullptr; it = it->next_sibling("UpdateInfo")) {
+            UpdateInfo info;
+            info.serverId = firstNodeOrThrow(*it, "ID").value();
+            info.addXmlInfo(firstNodeOrThrow(*it, "Xml").value()); // NOTE: destroys the node
+            data.newUpdates.push_back(std::move(info));
+        }
+        auto newCookie = res.first_node("NewCookie");
+        if (newCookie != nullptr) {
+            data.newCookie.encryptedData = firstNodeOrThrow(*newCookie, "EncryptedData").value();
+            data.newCookie.expiration = firstNodeOrThrow(*newCookie, "Expiration").value();
+        }
+        return data;
+    } catch (std::exception &e) {
+        maybeThrowSOAPFault(doc);
+        throw e;
     }
-    auto newCookie = res.first_node("NewCookie");
-    if (newCookie != nullptr) {
-        data.newCookie.encryptedData = firstNodeOrThrow(*newCookie, "EncryptedData").value();
-        data.newCookie.expiration = firstNodeOrThrow(*newCookie, "Expiration").value();
-    }
-    return data;
 }
 
 Win10StoreNetwork::DownloadLinkResult Win10StoreNetwork::getDownloadLink(

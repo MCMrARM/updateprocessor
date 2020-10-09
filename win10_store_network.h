@@ -30,6 +30,11 @@ public:
         std::vector<FileLocation> files;
     };
 
+    struct SOAPError : std::exception {
+        std::string code;
+        SOAPError(std::string code) : code(std::move(code)) {}
+    };
+
 private:
     static const char* const NAMESPACE_SOAP;
     static const char* const NAMESPACE_ADDRESSING;
@@ -51,7 +56,7 @@ private:
 
     std::string buildGetConfigRequest();
 
-    std::string buildCookieRequest();
+    std::string buildCookieRequest(std::string const& configLastChanged);
 
     std::string buildSyncRequest(CookieData const& cookie);
 
@@ -67,6 +72,8 @@ private:
         return *ret;
     }
 
+    void maybeThrowSOAPFault(rapidxml::xml_document<> &doc);
+
 public:
     void setAuthTokenBase64(std::string tk) {
         userToken = std::move(tk);
@@ -74,7 +81,9 @@ public:
 
     void dumpConfig();
 
-    CookieData fetchCookie();
+    std::string fetchConfigLastChanged();
+
+    CookieData fetchCookie(std::string const& configLastChanged);
 
     SyncResult syncVersion(CookieData const& cookie);
 

@@ -17,11 +17,11 @@ void Win10StoreManager::init() {
         msaAccount = msaAccountManager.findAccount(acc.at(0).getCID());
 
     if (cookieAnonymous.encryptedData.empty()) {
-        cookieAnonymous = wuWithAccount.fetchCookie();
+        cookieAnonymous = wuAnonymous.fetchCookie(wuAnonymous.fetchConfigLastChanged());
         saveConfig();
     }
     if (cookieWithAccount.encryptedData.empty()) {
-        cookieWithAccount = wuWithAccount.fetchCookie();
+        cookieWithAccount = wuWithAccount.fetchCookie(wuWithAccount.fetchConfigLastChanged());
         saveConfig();
     }
 }
@@ -84,6 +84,15 @@ void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::
     Win10StoreNetwork::SyncResult res;
     try {
         res = net.syncVersion(cookie);
+    } catch (Win10StoreNetwork::SOAPError& e) {
+        printf("SOAP ERROR: %s\n", e.code.c_str());
+        if (e.code == "ConfigChanged") {
+            cookie = net.fetchCookie(net.fetchConfigLastChanged());
+            saveConfig();
+            dataLock.unlock();
+            return checkVersion(net, cookie, knownVersions, isBeta);
+        }
+        return;
     } catch (std::exception& e) {
         printf("Win10 version check failed: %s\n", e.what());
         return;
