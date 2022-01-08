@@ -179,6 +179,7 @@ void DiscordState::onMessage(discord::Message const& m) {
                 char tt[512];
                 if (!std::strftime(tt, sizeof(tt), "%F %T UTC", std::gmtime(&t)))
                     tt[0] = '\0';
+                ss << tt;
             };
 
             ss << "**Android**\n";
