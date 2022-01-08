@@ -116,6 +116,7 @@ void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::
     });
     if (!res.newCookie.encryptedData.empty())
         cookie = res.newCookie;
+    lastSuccessfulCheck = std::chrono::system_clock::now();
     dataLock.unlock();
     if (hasAnyNewVersions) {
         std::lock_guard<std::mutex> lk(newVersionMutex);

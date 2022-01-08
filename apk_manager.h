@@ -12,6 +12,7 @@ struct ApkVersionInfo {
     int versionCode = -1;
     int lastDownloadedVersionCode = -1;
     std::string versionString;
+    std::chrono::system_clock::time_point lastSuccess;
 
     void loadFromConfig(playapi::config const& config, std::string const& prefix);
     void saveToConfig(playapi::config& config, std::string const& prefix);

@@ -35,6 +35,7 @@ private:
     Win10StoreNetwork wuWithAccount;
     Win10StoreNetwork::CookieData cookieAnonymous;
     Win10StoreNetwork::CookieData cookieWithAccount;
+    std::chrono::system_clock::time_point lastSuccessfulCheck;
 
     void loadConfig();
 
@@ -69,5 +70,10 @@ public:
     std::string getMsaToken();
 
     std::string getDownloadUrl(std::string const& updateId, int revisionNumber);
+
+    std::chrono::system_clock::time_point getLastSuccessfulCheck() {
+        std::lock_guard<std::mutex> lk(dataMutex);
+        return lastSuccessfulCheck;
+    }
 
 };

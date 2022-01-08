@@ -144,6 +144,7 @@ ApkManager::CheckResult ApkManager::updateLatestVersion(PlayDevice& device, ApkV
     ret.versionCode = appDetails.versioncode();
     ret.changelog = appDetails.recentchangeshtml();
     versionInfo.versionCode = appDetails.versioncode();
+    versionInfo.lastSuccess = std::chrono::system_clock::now();
 
     if (ret.hasNewVersion) {
         auto fullDetails = device.getApi().details(PKG_NAME);

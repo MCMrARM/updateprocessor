@@ -171,6 +171,33 @@ void DiscordState::onMessage(discord::Message const& m) {
             } catch (std::exception& e) {
                 api.createMessage(m.channel, "Error getting version info");
             }
+        } else if (command == "!healthcheck" && checkOp(m)) {
+            std::stringstream ss;
+
+            auto print_time = [&](std::chrono::system_clock::time_point time) {
+                std::time_t t = std::chrono::system_clock::to_time_t(time);
+                char tt[512];
+                if (!std::strftime(tt, sizeof(tt), "%F %T UTC", std::gmtime(&t)))
+                    tt[0] = '\0';
+            };
+
+            ss << "**Android**\n";
+            ss << "arm64 rel: ";
+            print_time(apkManager.getReleaseARM64VersionInfo().lastSuccess);
+            ss << "\narm32 rel: ";
+            print_time(apkManager.getReleaseARMVersionInfo().lastSuccess);
+            ss << "\narm64 beta: ";
+            print_time(apkManager.getBetaARM64VersionInfo().lastSuccess);
+            ss << "\narm32 beta: ";
+            print_time(apkManager.getBetaARMVersionInfo().lastSuccess);
+
+            if (win10StoreManager) {
+                ss << "\n**Windows**\n";
+                ss << "last check: ";
+                print_time(win10StoreManager->getLastSuccessfulCheck());
+            }
+
+            api.createMessage(m.channel, ss.str());
         }
     }
 }
