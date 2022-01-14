@@ -50,7 +50,7 @@ DiscordState::DiscordState(PlayManager& playManager, ApkManager& apkManager) : p
 
 void DiscordState::addWin10StoreMgr(Win10StoreManager &mgr) {
     using namespace std::placeholders;
-    mgr.addNewVersionCallback(std::bind(&DiscordState::onNewWin10Version, this, _1, _2));
+    mgr.addNewVersionCallback(std::bind(&DiscordState::onNewWin10Version, this, _1, _2, _3));
     win10StoreManager = &mgr;
 }
 
@@ -253,7 +253,10 @@ void DiscordState::onNewVersion(int version, std::string const& versionString,
     }
 }
 
-void DiscordState::onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const &u, bool isBeta) {
+void DiscordState::onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const &u, bool isBeta,
+                                     bool hasNewPackageMoniker) {
+    if (!hasNewPackageMoniker)
+        return;
     discord::CreateMessageParams params (isBeta ? "**New Windows 10 beta**" : "**New Windows 10 release**");
     std::string desc;
     params.embed["fields"] = nlohmann::json::array();

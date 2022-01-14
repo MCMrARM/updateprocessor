@@ -16,7 +16,7 @@ class Win10StoreManager {
 
 public:
     using NewVersionCallback = std::function<void (std::vector<Win10StoreNetwork::UpdateInfo> const& update,
-            bool isBeta)>;
+            bool isBeta, bool hasAnyNewPackageMoniker)>;
 
 private:
     std::thread thread;
@@ -25,6 +25,7 @@ private:
     bool stopped = false;
     std::set<std::string> knownVersions;
     std::set<std::string> knownVersionsWithAccount;
+    std::set<std::string> knownPackageMonikers;
     std::mutex newVersionMutex;
     std::vector<NewVersionCallback> newVersionCallback;
     msa::SimpleStorageManager msaStorage;

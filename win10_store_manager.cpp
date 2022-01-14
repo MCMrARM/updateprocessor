@@ -34,10 +34,19 @@ void Win10StoreManager::loadConfig() {
     cookieAnonymous.expiration = conf.get("cookie.expiration");
     cookieWithAccount.encryptedData = conf.get("cookie_with_account.encrypted_data");
     cookieWithAccount.expiration = conf.get("cookie_with_account.expiration");
-    for (std::string const& v : conf.get_array("known_versions"))
+
+    auto getPackageMoniker = [](std::string const &v) -> std::string {
+        auto pos = v.rfind(' ');
+        return pos != std::string::npos ? v.substr(pos + 1) : "";
+    };
+    for (std::string const& v : conf.get_array("known_versions")) {
         knownVersions.insert(v);
-    for (std::string const& v : conf.get_array("known_versions_with_account"))
+        knownPackageMonikers.insert(getPackageMoniker(v));
+    }
+    for (std::string const& v : conf.get_array("known_versions_with_account")) {
         knownVersionsWithAccount.insert(v);
+        knownPackageMonikers.insert(getPackageMoniker(v));
+    }
 }
 
 void Win10StoreManager::saveConfig() {
@@ -98,6 +107,7 @@ void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::
         return;
     }
     bool hasAnyNewVersions = false;
+    bool hasAnyNewPackageMoniker = false;
     std::vector<Win10StoreNetwork::UpdateInfo> newUpdates;
     for (auto const& e : res.newUpdates) {
         if (strncmp(e.packageMoniker.c_str(), "Microsoft.MinecraftUWP_", sizeof("Microsoft.MinecraftUWP_") - 1) == 0) {
@@ -108,6 +118,10 @@ void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::
             hasAnyNewVersions = true;
             knownVersions.insert(mergedString);
             newUpdates.push_back(e);
+            if (knownPackageMonikers.count(e.packageMoniker) == 0) {
+                hasAnyNewPackageMoniker = true;
+                knownPackageMonikers.insert(e.packageMoniker);
+            }
         }
     }
     std::sort(newUpdates.begin(), newUpdates.end(), [](Win10StoreNetwork::UpdateInfo const& a,
@@ -121,7 +135,7 @@ void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::
     if (hasAnyNewVersions) {
         std::lock_guard<std::mutex> lk(newVersionMutex);
         for (NewVersionCallback const &cb : newVersionCallback)
-            cb(newUpdates, isBeta);
+            cb(newUpdates, isBeta, hasAnyNewPackageMoniker);
     }
     dataLock.lock();
     saveConfig();
