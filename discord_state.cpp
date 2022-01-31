@@ -199,6 +199,9 @@ void DiscordState::onMessage(discord::Message const& m) {
             }
 
             api.createMessage(m.channel, ss.str());
+        } else if (command == "!restart" && checkOp(m)) {
+            char *const argv[] = {(char *) "/proc/self/exe", nullptr};
+            execv("/proc/self/exe", argv);
         }
     }
 }
