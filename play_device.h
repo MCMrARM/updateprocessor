@@ -17,6 +17,7 @@ private:
     playapi::login_api login;
     playapi::api api;
     playapi::mcs_registration_api apiMcs;
+    const std::string statePath;
 
     static playapi::device_info loadDeviceInfo(std::string const& devicePath);
 
@@ -32,7 +33,7 @@ private:
 public:
     PlayDevice(app_config const& appConfig, std::string const& devicePath, std::string const& statePath) :
             device(loadDeviceInfo(devicePath)), deviceConfig(loadDeviceStateInfo(device, statePath)),
-            login(loadLoginInfo(device, deviceConfig, appConfig)), api(device), apiMcs(device) {
+            login(loadLoginInfo(device, deviceConfig, appConfig)), api(device), apiMcs(device), statePath(statePath) {
         api.set_auth(login);
         api.set_checkin_data(deviceConfig.checkin_data);
         apiMcs.set_checkin_data(deviceConfig.checkin_data);
@@ -47,6 +48,8 @@ public:
     inline playapi::mcs_registration_api& getMcsApi() { return apiMcs; }
 
     inline playapi::checkin_result const& getCheckinData() { return deviceConfig.checkin_data; }
+
+    inline std::string const &getStatePath() const { return statePath; }
 
     void registerMCS();
 

@@ -34,5 +34,6 @@ public:
     PlayDevice& getBetaDeviceARM64() { return betaDeviceARM64; }
     PlayDevice& getBetaDeviceX8664() { return betaDeviceX8664; }
 
+    void deleteStateData();
 
 };
