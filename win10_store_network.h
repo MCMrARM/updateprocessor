@@ -42,8 +42,6 @@ private:
     static const char* const NAMESPACE_WSSECURITY_UTILITY;
     static const char* const NAMESPACE_WU_AUTHORIZATION;
 
-    static const char* const MINECRAFT_APP_ID;
-
     static const char* const PRIMARY_URL;
 
     std::string userToken;
@@ -58,7 +56,7 @@ private:
 
     std::string buildCookieRequest(std::string const& configLastChanged);
 
-    std::string buildSyncRequest(CookieData const& cookie);
+    std::string buildSyncRequest(CookieData const& cookie, std::vector<std::string> const &categoryIds);
 
     std::string buildDownloadLinkRequest(std::string const& updateId, int revisionNumber);
 
@@ -85,7 +83,7 @@ public:
 
     CookieData fetchCookie(std::string const& configLastChanged);
 
-    SyncResult syncVersion(CookieData const& cookie);
+    SyncResult syncVersion(CookieData const& cookie, std::vector<std::string> const &categoryIds);
 
     DownloadLinkResult getDownloadLink(std::string const& updateId, int revisionNumber);
 

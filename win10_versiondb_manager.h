@@ -45,7 +45,9 @@ struct Win10VersionTextDb {
         std::string fileName;
         std::string serverId;
     };
-    std::vector<VersionInfo> releaseList, betaList;
+    std::vector<VersionInfo> releaseList, betaList, previewList;
+
+    std::vector<VersionInfo> &getListFor(Win10VersionType type);
 
     static Version convertVersion(std::string const& ver);
 
@@ -80,6 +82,6 @@ public:
 
     void addWin10StoreMgr(Win10StoreManager& mgr);
 
-    void onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const& u, bool isBeta);
+    void onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const& u, Win10VersionType versionType);
 
 };

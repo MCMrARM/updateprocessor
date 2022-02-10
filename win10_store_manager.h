@@ -12,13 +12,20 @@
 #include <msa/account_manager.h>
 #include "win10_store_network.h"
 
+enum class Win10VersionType {
+    Release, Beta, Preview
+};
+
 class Win10StoreManager {
 
 public:
     using NewVersionCallback = std::function<void (std::vector<Win10StoreNetwork::UpdateInfo> const& update,
-            bool isBeta, bool hasAnyNewPackageMoniker)>;
+            Win10VersionType versionType, bool hasAnyNewPackageMoniker)>;
 
 private:
+    static const char* const MINECRAFT_APP_ID;
+    static const char* const MINECRAFT_PREVIEW_APP_ID;
+
     std::thread thread;
     std::mutex threadMutex, dataMutex;
     std::condition_variable stopCv;
@@ -45,7 +52,7 @@ private:
     void runVersionCheckThread();
 
     void checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::CookieData& cookie,
-            std::set<std::string>& knownVersions, bool isBeta);
+            std::set<std::string>& knownVersions, Win10VersionType versionType);
 
 public:
     Win10StoreManager() : msaStorage("priv/msa/"), msaLoginManager(&msaStorage), msaAccountManager(msaStorage) {}

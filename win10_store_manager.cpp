@@ -8,6 +8,10 @@
 #include <msa/compact_token.h>
 #include <codecvt>
 
+
+const char* const Win10StoreManager::MINECRAFT_APP_ID = "d25480ca-36aa-46e6-b76b-39608d49558c";
+const char* const Win10StoreManager::MINECRAFT_PREVIEW_APP_ID = "188f32fc-5eaa-45a8-9f78-7dde4322d131";
+
 void Win10StoreManager::init() {
     std::lock_guard<std::mutex> dataLock (dataMutex);
     loadConfig();
@@ -69,7 +73,7 @@ void Win10StoreManager::saveConfig() {
         std::ofstream ifs("priv/win10.conf.new");
         conf.save(ifs);
     }
-    rename("priv/win10.conf.new", "priv/win10.conf");
+    rename("priv/win10.conf.new", "priv/win10.cupdateprocessoronf");
 }
 
 std::string Win10StoreManager::getMsaToken() {
@@ -88,18 +92,18 @@ std::string Win10StoreManager::getMsaToken() {
 }
 
 void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::CookieData& cookie,
-        std::set<std::string>& knownVersions, bool isBeta) {
+                                     std::set<std::string>& knownVersions, Win10VersionType versionType) {
     std::unique_lock<std::mutex> dataLock (dataMutex);
     Win10StoreNetwork::SyncResult res;
     try {
-        res = net.syncVersion(cookie);
+        res = net.syncVersion(cookie, {versionType == Win10VersionType::Preview ? MINECRAFT_PREVIEW_APP_ID : MINECRAFT_APP_ID});
     } catch (Win10StoreNetwork::SOAPError& e) {
         printf("SOAP ERROR: %s\n", e.code.c_str());
         if (e.code == "ConfigChanged") {
             cookie = net.fetchCookie(net.fetchConfigLastChanged());
             saveConfig();
             dataLock.unlock();
-            return checkVersion(net, cookie, knownVersions, isBeta);
+            return checkVersion(net, cookie, knownVersions, versionType);
         }
         return;
     } catch (std::exception& e) {
@@ -110,7 +114,8 @@ void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::
     bool hasAnyNewPackageMoniker = false;
     std::vector<Win10StoreNetwork::UpdateInfo> newUpdates;
     for (auto const& e : res.newUpdates) {
-        if (strncmp(e.packageMoniker.c_str(), "Microsoft.MinecraftUWP_", sizeof("Microsoft.MinecraftUWP_") - 1) == 0) {
+        if ((versionType != Win10VersionType::Preview && strncmp(e.packageMoniker.c_str(), "Microsoft.MinecraftUWP_", sizeof("Microsoft.MinecraftUWP_") - 1) == 0) ||
+            (versionType == Win10VersionType::Preview && strncmp(e.packageMoniker.c_str(), "Microsoft.MinecraftWindowsBeta_", sizeof("Microsoft.MinecraftWindowsBeta_") - 1) == 0)) {
             std::string mergedString = e.serverId + " " + e.updateId + " " + e.packageMoniker;
             if (knownVersions.count(mergedString) > 0)
                 continue;
@@ -135,7 +140,7 @@ void Win10StoreManager::checkVersion(Win10StoreNetwork& net, Win10StoreNetwork::
     if (hasAnyNewVersions) {
         std::lock_guard<std::mutex> lk(newVersionMutex);
         for (NewVersionCallback const &cb : newVersionCallback)
-            cb(newUpdates, isBeta, hasAnyNewPackageMoniker);
+            cb(newUpdates, versionType, hasAnyNewPackageMoniker);
     }
     dataLock.lock();
     saveConfig();
@@ -149,7 +154,8 @@ void Win10StoreManager::startChecking() {
 void Win10StoreManager::runVersionCheckThread() {
     std::unique_lock<std::mutex> lk(threadMutex);
     while (!stopped) {
-        checkVersion(wuAnonymous, cookieAnonymous, knownVersions, false);
+        checkVersion(wuAnonymous, cookieAnonymous, knownVersions, Win10VersionType::Release);
+        checkVersion(wuAnonymous, cookieAnonymous, knownVersions, Win10VersionType::Preview);
         {
             std::lock_guard<std::mutex> dataLock (dataMutex);
             try {
@@ -159,7 +165,7 @@ void Win10StoreManager::runVersionCheckThread() {
                 continue;
             }
         }
-        checkVersion(wuWithAccount, cookieWithAccount, knownVersionsWithAccount, true);
+        checkVersion(wuWithAccount, cookieWithAccount, knownVersionsWithAccount, Win10VersionType::Beta);
 
         auto until = std::chrono::system_clock::now() + std::chrono::minutes(10);
         stopCv.wait_until(lk, until);

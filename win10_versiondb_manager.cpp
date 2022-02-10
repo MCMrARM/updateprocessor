@@ -105,12 +105,12 @@ void Win10VersionDBManager::addWin10StoreMgr(Win10StoreManager &mgr) {
     mgr.addNewVersionCallback(std::bind(&Win10VersionDBManager::onNewWin10Version, this, _1, _2));
 }
 
-void Win10VersionDBManager::onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const &u, bool isBeta) {
+void Win10VersionDBManager::onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const &u, Win10VersionType versionType) {
     if (u.empty())
         return;
     Win10VersionTextDb textDb;
     textDb.read(dir + "versions.txt");
-    auto& textList = isBeta ? textDb.betaList : textDb.releaseList;
+    auto& textList = textDb.getListFor(versionType);
     for (auto const& v : u)
         textList.push_back({v.updateId, v.packageMoniker, v.serverId});
     textDb.write(dir + "versions.txt");
@@ -119,19 +119,35 @@ void Win10VersionDBManager::onNewWin10Version(std::vector<Win10StoreNetwork::Upd
     commitName << "Minecraft ";
     auto ver = Win10VersionTextDb::convertVersion(u[0].packageMoniker);
     commitName << ver.major << "." << ver.minor << "." << ver.patch << "." << ver.revision;
-    if (isBeta)
+    if (versionType == Win10VersionType::Beta)
         commitName << " (Beta)";
+    if (versionType == Win10VersionType::Preview)
+        commitName << " (Preview)";
     commitDb(commitName.str());
     pushDb();
+}
+
+std::vector<Win10VersionTextDb::VersionInfo>& Win10VersionTextDb::getListFor(Win10VersionType type) {
+    if (type == Win10VersionType::Release)
+        return releaseList;
+    if (type == Win10VersionType::Beta)
+        return betaList;
+    if (type == Win10VersionType::Preview)
+        return previewList;
+    throw std::runtime_error("bad version type in getListFor");
 }
 
 void Win10VersionTextDb::read(std::string const &filePath) {
     std::ifstream ifs(filePath);
     std::string line;
-    bool isBeta = false;
+    Win10VersionType versionType = Win10VersionType::Release;
     while (std::getline(ifs, line)) {
+        if (line == "Releases")
+            versionType = Win10VersionType::Release;
         if (line == "Beta")
-            isBeta = true;
+            versionType = Win10VersionType::Beta;
+        if (line == "Preview")
+            versionType = Win10VersionType::Preview;
         auto iof = line.find(' ');
         if (iof == std::string::npos)
             continue;
@@ -139,7 +155,7 @@ void Win10VersionTextDb::read(std::string const &filePath) {
         VersionInfo vi = {line.substr(0, iof), line.substr(iof + 1, iof2 != std::string::npos ? iof2 - iof - 1 : iof2)};
         if (iof2 != std::string::npos)
             vi.serverId = line.substr(iof2 + 1);
-        (isBeta ? betaList : releaseList).push_back(std::move(vi));
+        getListFor(versionType).push_back(std::move(vi));
     }
 }
 
@@ -151,6 +167,10 @@ void Win10VersionTextDb::write(std::string const &filePath) {
     ofs << "\n";
     ofs << "Beta\n";
     for (auto const& v : betaList)
+        ofs << v.uuid << " " << v.fileName << (v.serverId.empty() ? "" : " ") << v.serverId << "\n";
+    ofs << "\n";
+    ofs << "Preview\n";
+    for (auto const& v : previewList)
         ofs << v.uuid << " " << v.fileName << (v.serverId.empty() ? "" : " ") << v.serverId << "\n";
     ofs << "\n";
 }

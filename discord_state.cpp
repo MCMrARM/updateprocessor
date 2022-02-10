@@ -260,15 +260,23 @@ void DiscordState::onNewVersion(int version, std::string const& versionString,
     }
 }
 
-void DiscordState::onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const &u, bool isBeta,
+void DiscordState::onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> const &u, Win10VersionType versionType,
                                      bool hasNewPackageMoniker) {
     if (!hasNewPackageMoniker)
         return;
-    discord::CreateMessageParams params (isBeta ? "**New Windows 10 beta**" : "**New Windows 10 release**");
+    std::string header = "**New Windows 10 version of unknown type**";
+    if (versionType == Win10VersionType::Release)
+        header = "**New Windows 10 release**";
+    if (versionType == Win10VersionType::Beta)
+        header = "**New Windows 10 beta**";
+    if (versionType == Win10VersionType::Preview)
+        header = "**New Windows 10 preview**";
+
+    discord::CreateMessageParams params (header);
     std::string desc;
     params.embed["fields"] = nlohmann::json::array();
     nlohmann::json jsonData = nlohmann::json::object();
-    jsonData["isBeta"] = isBeta;
+    jsonData["type"] = (int) versionType;
     jsonData["updates"] = nlohmann::json::array();
     for (auto const& e : u) {
         desc += "**" + e.packageMoniker + "**\n" + e.updateId + "\n";
@@ -292,7 +300,7 @@ void DiscordState::onNewWin10Version(std::vector<Win10StoreNetwork::UpdateInfo> 
     }
 
     for (auto const& r : jsonNotifyRules) {
-        if (isBeta ? (!r.notifyW10Beta) : (!r.notifyW10Release))
+        if (versionType != Win10VersionType::Release ? (!r.notifyW10Beta) : (!r.notifyW10Release))
             continue;
 
         api.createMessage(r.channel, "`" + jsonData.dump() + "`");

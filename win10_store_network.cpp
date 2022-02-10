@@ -15,8 +15,6 @@ const char* const Win10StoreNetwork::NAMESPACE_WSSECURITY_SECEXT = "http://docs.
 const char* const Win10StoreNetwork::NAMESPACE_WSSECURITY_UTILITY = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd";
 const char* const Win10StoreNetwork::NAMESPACE_WU_AUTHORIZATION = "http://schemas.microsoft.com/msus/2014/10/WindowsUpdateAuthorization";
 
-const char* const Win10StoreNetwork::MINECRAFT_APP_ID = "d25480ca-36aa-46e6-b76b-39608d49558c";
-
 const char* const Win10StoreNetwork::PRIMARY_URL = "https://fe3.delivery.mp.microsoft.com/ClientWebService/client.asmx";
 
 
@@ -119,7 +117,7 @@ std::string Win10StoreNetwork::buildCookieRequest(std::string const& configLastC
     return ss.str();
 }
 
-std::string Win10StoreNetwork::buildSyncRequest(CookieData const& cookieData) {
+std::string Win10StoreNetwork::buildSyncRequest(CookieData const& cookieData, std::vector<std::string> const &categoryIds) {
     xml_document<> doc;
     auto envelope = doc.allocate_node(node_element, "s:Envelope");
     doc.append_node(envelope);
@@ -152,9 +150,11 @@ std::string Win10StoreNetwork::buildSyncRequest(CookieData const& cookieData) {
     params->append_node(doc.allocate_node(node_element, "NeedTwoGroupOutOfScopeUpdates", "true"));
     auto filterAppCategoryIds = doc.allocate_node(node_element, "FilterAppCategoryIds");
     params->append_node(filterAppCategoryIds);
-    auto filterAppCatId = doc.allocate_node(node_element, "CategoryIdentifier");
-    filterAppCategoryIds->append_node(filterAppCatId);
-    filterAppCatId->append_node(doc.allocate_node(node_element, "Id", MINECRAFT_APP_ID));
+    for (auto &categoryId : categoryIds) {
+        auto filterAppCatId = doc.allocate_node(node_element, "CategoryIdentifier");
+        filterAppCategoryIds->append_node(filterAppCatId);
+        filterAppCatId->append_node(doc.allocate_node(node_element, "Id", categoryId.c_str()));
+    }
     params->append_node(doc.allocate_node(node_element, "TreatAppCategoryIdsAsInstalled", "true"));
     params->append_node(doc.allocate_node(node_element, "AlsoPerformRegularSync", "false"));
     params->append_node(doc.allocate_node(node_element, "ComputerSpec", ""));
@@ -340,8 +340,8 @@ Win10StoreNetwork::CookieData Win10StoreNetwork::fetchCookie(std::string const& 
     return data;
 }
 
-Win10StoreNetwork::SyncResult Win10StoreNetwork::syncVersion(CookieData const& cookie) {
-    std::string request = buildSyncRequest(cookie);
+Win10StoreNetwork::SyncResult Win10StoreNetwork::syncVersion(CookieData const& cookie, std::vector<std::string> const &categoryIds) {
+    std::string request = buildSyncRequest(cookie, categoryIds);
     std::string ret;
     doHttpRequest(Win10StoreNetwork::PRIMARY_URL, request.c_str(), ret);
     xml_document<> doc;
