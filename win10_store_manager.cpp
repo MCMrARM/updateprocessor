@@ -73,7 +73,7 @@ void Win10StoreManager::saveConfig() {
         std::ofstream ifs("priv/win10.conf.new");
         conf.save(ifs);
     }
-    rename("priv/win10.conf.new", "priv/win10.cupdateprocessoronf");
+    rename("priv/win10.conf.new", "priv/win10.conf");
 }
 
 std::string Win10StoreManager::getMsaToken() {
