@@ -209,7 +209,7 @@ void Win10VersionTextDb::writeJson(std::string const &filePath) {
 }
 
 Win10VersionTextDb::Version Win10VersionTextDb::convertVersion(std::string const &ver) {
-    static std::regex regex (R"(Microsoft\.(MinecraftUWP|MinecraftWindowsBeta)_([0-9]+)\.([0-9]+)\.([0-9]+)\..*__8wekyb3d8bbwe.*)");
+    static std::regex regex (R"(Microsoft\.(?:MinecraftUWP|MinecraftWindowsBeta)_([0-9]+)\.([0-9]+)\.([0-9]+)\..*__8wekyb3d8bbwe.*)");
     std::smatch match;
     if (!std::regex_match(ver, match, regex))
         throw std::runtime_error("regex_match failed");
