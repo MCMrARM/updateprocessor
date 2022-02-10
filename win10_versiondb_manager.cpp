@@ -180,28 +180,29 @@ void Win10VersionTextDb::writeJson(std::string const &filePath) {
     struct Element {
         Version version;
         std::string uuid;
-        bool isBeta;
+        int versionType;
     };
     std::vector<Element> elements;
     std::set<Version> addedVersions;
-    auto addVersions = [&elements, &addedVersions](std::vector<VersionInfo> const& list, bool isBeta) {
+    auto addVersions = [&elements, &addedVersions](std::vector<VersionInfo> const& list, int versionType) {
         for (auto const& v : list) {
             auto cvVersion = convertVersion(v.fileName);
             if (v.fileName.find(".0_x64") != std::string::npos && addedVersions.count(cvVersion) == 0) {
-                elements.push_back({cvVersion, v.uuid, isBeta});
+                elements.push_back({cvVersion, v.uuid, versionType});
                 addedVersions.insert(cvVersion);
             }
         }
     };
-    addVersions(releaseList, false);
-    addVersions(betaList, true);
+    addVersions(releaseList, 0);
+    addVersions(betaList, 1);
+    addVersions(previewList, 2);
     std::sort(elements.begin(), elements.end(), [](Element const& a, Element const& b) {
         return a.version < b.version;
     });
     for (auto const& el : elements) {
         std::stringstream ver;
         ver << el.version.major << "." << el.version.minor << "." << el.version.patch << "." << el.version.revision;
-        j.push_back({ver.str(), el.uuid, el.isBeta ? 1 : 0});
+        j.push_back({ver.str(), el.uuid, el.versionType});
     }
 
     std::ofstream ofs(filePath);
